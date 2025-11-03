@@ -1,25 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import LeagueProgress from "./LeagueProgress";
 import ChatInterface from "./ChatInterface";
 import { LeagueWithTiers, MemberWithTier, SimpleTier } from "@/types";
-import { League } from "@prisma/client";
+import { recordSessionTime } from "@/actions/point-actions";
 
 interface MemberViewProps {
   member: MemberWithTier;
   league: LeagueWithTiers;
   userName: string;
+  memberId: string;
 }
 
 export default function MemberView({
   member,
   league,
   userName,
+  memberId,
 }: MemberViewProps) {
   const [selectedTierId, setSelectedTierId] = useState<string | null>(
     member.currentTier?.id || league.tiers[0]?.id || null
   );
+  const sessionStartTime = useRef<Date>(new Date());
+  const sessionRecorded = useRef(false);
 
   const currentTierOrder = member.currentTier?.order ?? -1;
 
@@ -41,6 +45,24 @@ export default function MemberView({
     : member.currentTier
     ? league.tiers.find((t) => t.id === member?.currentTier?.id)
     : league.tiers[0] || null;
+
+  // Track session time
+  useEffect(() => {
+    const checkSessionTime = setInterval(() => {
+      const now = new Date();
+      const minutesSpent = Math.floor(
+        (now.getTime() - sessionStartTime.current.getTime()) / (1000 * 60)
+      );
+
+      // Award points after 5 minutes (once per session)
+      if (minutesSpent >= 5 && !sessionRecorded.current) {
+        sessionRecorded.current = true;
+        recordSessionTime(memberId, minutesSpent);
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(checkSessionTime);
+  }, [memberId]);
 
   return (
     <div className="min-h-screen bg-gray-a1">
@@ -76,6 +98,7 @@ export default function MemberView({
               accessibleTiers={accessibleTiers}
               selectedTierId={selectedTierId}
               onSelectTier={setSelectedTierId}
+              memberId={memberId}
             />
           ) : (
             <div className="bg-gray-a2 border border-gray-a6 rounded-xl p-8 text-center">

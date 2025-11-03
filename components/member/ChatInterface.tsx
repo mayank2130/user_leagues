@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import { TierWithMessages, MemberWithTier, SimpleTier } from "@/types";
+import { recordMessageRead } from "@/actions/point-actions";
 
 interface ChatInterfaceProps {
   tier: TierWithMessages;
@@ -8,6 +10,7 @@ interface ChatInterfaceProps {
   accessibleTiers: SimpleTier[];
   selectedTierId: string | null;
   onSelectTier: (tierId: string) => void;
+  memberId: string;
 }
 
 export default function ChatInterface({
@@ -16,7 +19,19 @@ export default function ChatInterface({
   accessibleTiers,
   selectedTierId,
   onSelectTier,
+  memberId,
 }: ChatInterfaceProps) {
+  // Track message views automatically
+  useEffect(() => {
+    if (tier.messages.length > 0) {
+      // Record read for the first 5 unread messages when tier is loaded
+      const messagesToMark = tier.messages.slice(0, 5);
+      messagesToMark.forEach((message) => {
+        recordMessageRead(memberId, message.id);
+      });
+    }
+  }, [tier.id, memberId]);
+
   return (
     <div className="bg-gray-a2 border border-gray-a6 rounded-xl overflow-hidden flex flex-col h-[calc(100vh-200px)]">
       {/* Tier Tabs */}

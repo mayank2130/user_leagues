@@ -9,11 +9,17 @@ import { League, Tier } from "@prisma/client";
 import EditLeagueForm from "@/components/admin/EditLeagueForm";
 import LeagueInfo from "@/components/admin/LeaguesInfo";
 
+interface AdminDashboardProps {
+  params: { communityId: string; experienceId: string };
+  trialDaysRemaining?: number;
+  trialActive?: boolean;
+}
+
 export default function AdminDashboard({
   params,
-}: {
-  params: { communityId: string; experienceId: string };
-}) {
+  trialDaysRemaining = 5,
+  trialActive = true,
+}: AdminDashboardProps) {
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
   const [tiers, setTiers] = useState<Tier[]>([]);
   const [showCreateLeague, setShowCreateLeague] = useState(false);
@@ -82,13 +88,38 @@ export default function AdminDashboard({
   return (
     <div className="min-h-screen bg-slate-50 overflow-hidden">
       {/* Header */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-9 font-bold text-gray-12">Admin Dashboard</h1>
-            <p className="mt-1 text-sm text-gray-11">
-              Manage leagues, tiers, and community members
+      {trialActive && (
+        <div className="bg-blue-a2 border-b border-blue-a6 px-6 py-3">
+          <div className="flex items-center justify-between max-w-7xl mx-auto">
+            <p className="text-2 text-blue-11">
+              <span className="font-semibold">Free Trial Active</span> -{" "}
+              {trialDaysRemaining} days remaining
             </p>
+            <div className="w-32 h-2 bg-blue-a3 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-9 transition-all"
+                style={{ width: `${(trialDaysRemaining / 5) * 100}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="">
+          <div className="flex flex-row items-center justify-between">
+            <div className="">
+              <h1 className="text-9 font-bold text-gray-12">Admin Dashboard</h1>
+              <p className="mt-1 text-sm text-gray-11">
+                Manage leagues, tiers, and community members
+              </p>
+            </div>
+            <Button
+              size="3"
+              className="bg-blue-a4 hover:bg-blue-a5 text-white cursor-pointer"
+            >
+              Get Premium
+            </Button>
           </div>
           {!selectedLeague && !showCreateLeague && (
             <Button

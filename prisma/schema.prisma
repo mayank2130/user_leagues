@@ -20,11 +20,10 @@ model Community {
   updatedAt DateTime @updatedAt
   
   subscriptions Subscription[]
-  league        League?          // One league per community
+  league        League?
   members       Member[]
 }
 
-// ONE league per community
 model League {
   id          String   @id @default(cuid())
   name        String
@@ -32,7 +31,7 @@ model League {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  communityId String   @unique  // One league per community
+  communityId String   @unique
   
   community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
   tiers     Tier[]
@@ -44,8 +43,8 @@ model Tier {
   id               String   @id @default(cuid())
   name             String
   description      String?
-  minScore         Int      // Minimum score to UNLOCK this tier
-  order            Int      // Display order (0 = lowest/entry tier)
+  minScore         Int
+  order            Int
   color            String?
   icon             String?
   createdAt        DateTime @default(now())
@@ -54,27 +53,32 @@ model Tier {
   
   league           League        @relation(fields: [leagueId], references: [id], onDelete: Cascade)
   messages         Message[]
-  members          Member[]      // Members currently in this tier
+  members          Member[]
   
   @@index([leagueId])
   @@index([leagueId, order])
 }
 
 model Member {
-  id          String   @id @default(cuid())
-  communityId String
-  whopId      String
-  name        String?
-  role        Role     @default(MEMBER)
-  totalScore  Int      @default(0)
-  currentTierId String? // Current tier (the HIGHEST tier they've unlocked)
-  joinedAt    DateTime @default(now())
-  lastActive  DateTime @default(now())
+  id                String   @id @default(cuid())
+  communityId       String
+  whopId            String
+  name              String?
+  role              Role     @default(MEMBER)
+  totalScore        Int      @default(0)
+  currentTierId     String?
+  lastCheckedInDate DateTime? // Track daily check-in (date only, no time)
+  checkInStreak     Int      @default(0) // Consecutive days checked in
+  totalSessionTime  Int      @default(0) // Total minutes spent
+  joinedAt          DateTime @default(now())
+  lastActive        DateTime @default(now())
   
-  community        Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  currentTier      Tier?         @relation(fields: [currentTierId], references: [id])
+  community        Community      @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  currentTier      Tier?          @relation(fields: [currentTierId], references: [id])
   messages         Message[]
   scoreHistory     ScoreHistory[]
+  dailyActivity    DailyActivity[]
+  messageReads     MessageRead[]
   
   @@unique([communityId, whopId])
   @@index([whopId])
@@ -85,18 +89,50 @@ model Member {
 model Message {
   id        String   @id @default(cuid())
   content   String   @db.Text
-  tierId    String   // Tier this message belongs to
-  authorId  String   // Member who sent the message
+  tierId    String
+  authorId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   isEdited  Boolean  @default(false)
   isPinned  Boolean  @default(false)
   
-  tier   Tier   @relation(fields: [tierId], references: [id], onDelete: Cascade)
-  author Member @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  tier          Tier          @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  author        Member        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  messageReads  MessageRead[]
   
   @@index([tierId, createdAt])
   @@index([authorId])
+}
+
+model MessageRead {
+  id        String   @id @default(cuid())
+  messageId String
+  memberId  String
+  viewedAt  DateTime @default(now())
+  pointsAwarded Boolean @default(false) // Track if points already given
+  
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  member  Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  
+  @@unique([messageId, memberId])
+  @@index([memberId, viewedAt])
+}
+
+model DailyActivity {
+  id           String   @id @default(cuid())
+  memberId     String
+  date         DateTime // Date in IST timezone
+  checkedIn    Boolean  @default(false)
+  sessionCount Int      @default(0)
+  timeSpentMin Int      @default(0)
+  messagesRead Int      @default(0)
+  linksClicked Int      @default(0)
+  pointsEarned Int      @default(0)
+  
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  
+  @@unique([memberId, date])
+  @@index([memberId, date])
 }
 
 model ScoreHistory {
@@ -104,7 +140,7 @@ model ScoreHistory {
   memberId    String
   points      Int
   reason      String?
-  sourceType  String?
+  sourceType  String? // "daily_checkin", "streak_bonus", "message_read", "session_time", "subscription"
   sourceId    String?
   createdAt   DateTime @default(now())
   

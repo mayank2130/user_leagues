@@ -5,6 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import MemberView from "@/components/member/MemberView";
 import AdminDashboard from "@/components/admin/AdminDashboard";
+import { recordDailyCheckIn } from "@/actions/point-actions";
+import {
+  initializeFreeTrial,
+  checkTrialStatus,
+} from "@/actions/subscription-actions";
 
 export default async function ExperiencePage({
   params,
@@ -19,19 +24,6 @@ export default async function ExperiencePage({
     whopsdk.users.retrieve(userId),
     whopsdk.users.checkAccess(experienceId, { id: userId }),
   ]);
-
-  if (!access.has_access) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-8">
-        <div className="text-center">
-          <h1 className="text-6 font-bold mb-2">Access Denied</h1>
-          <p className="text-gray-10">
-            You don't have access to this experience.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   const companyId = experience.company.id;
   const isWhopAdmin = access.access_level === "admin";
@@ -102,7 +94,7 @@ export default async function ExperiencePage({
       whopId: userId,
       name: user.name || user.username,
       role: memberRole,
-      currentTierId: entryTier.id, // Start at entry tier
+      currentTierId: entryTier.id,
       totalScore: 0,
     },
     include: {
@@ -120,10 +112,23 @@ export default async function ExperiencePage({
 
   // Admin view
   if (member.role === Role.ADMIN) {
+    // Initialize free trial for first-time admin
+    await initializeFreeTrial(community.id, userId, "free_trial_5days");
+
+    // Check trial status
+    const trialStatus = await checkTrialStatus(community.id, userId);
+
     return (
-      <AdminDashboard params={{ communityId: community.id, experienceId }} />
+      <AdminDashboard
+        params={{ communityId: community.id, experienceId }}
+        trialDaysRemaining={trialStatus.daysRemaining}
+        trialActive={trialStatus.trialActive}
+      />
     );
   }
+
+  // Member view
+  await recordDailyCheckIn(member.id);
 
   // Member view - fetch full league data with tiers
   const leagueWithTiers = await prisma.league.findUnique({
@@ -150,7 +155,7 @@ export default async function ExperiencePage({
     },
   });
 
-  // Refetch member to ensure all data is fresh
+  // Refetch member to ensure all data is fresh (after check-in)
   const updatedMember = await prisma.member.findUnique({
     where: { id: member.id },
     include: {
@@ -171,6 +176,7 @@ export default async function ExperiencePage({
       member={updatedMember!}
       league={leagueWithTiers!}
       userName={user.name || user.username || "Member"}
+      memberId={member.id}
     />
   );
 }
