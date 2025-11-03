@@ -8,6 +8,7 @@ import { getLeague, getTiers } from "@/actions/admin-actions";
 import { League, Tier } from "@prisma/client";
 import EditLeagueForm from "@/components/admin/EditLeagueForm";
 import LeagueInfo from "@/components/admin/LeaguesInfo";
+import { useRouter } from "next/navigation";
 
 interface AdminDashboardProps {
   params: { communityId: string; experienceId: string };
@@ -20,6 +21,7 @@ export default function AdminDashboard({
   trialDaysRemaining = 5,
   trialActive = true,
 }: AdminDashboardProps) {
+  const router = useRouter();
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
   const [tiers, setTiers] = useState<Tier[]>([]);
   const [showCreateLeague, setShowCreateLeague] = useState(false);
@@ -117,6 +119,7 @@ export default function AdminDashboard({
             <Button
               size="3"
               className="bg-blue-a4 hover:bg-blue-a5 text-white cursor-pointer"
+              onClick={() => router.push("/pricing")}
             >
               Get Premium
             </Button>
