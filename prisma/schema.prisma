@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  MEMBER
+  ADMIN
+}
+
+model Community {
+  id        String   @id @default(cuid())
+  whopId    String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  subscriptions Subscription[]
+  league        League?          // One league per community
+  members       Member[]
+}
+
+// ONE league per community
+model League {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  communityId String   @unique  // One league per community
+  
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  tiers     Tier[]
+  
+  @@index([communityId])
+}
+
+model Tier {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  minScore         Int      // Minimum score to UNLOCK this tier
+  order            Int      // Display order (0 = lowest/entry tier)
+  color            String?
+  icon             String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  leagueId         String
+  
+  league           League        @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  messages         Message[]
+  members          Member[]      // Members currently in this tier
+  
+  @@index([leagueId])
+  @@index([leagueId, order])
+}
+
+model Member {
+  id          String   @id @default(cuid())
+  communityId String
+  whopId      String
+  name        String?
+  role        Role     @default(MEMBER)
+  totalScore  Int      @default(0)
+  currentTierId String? // Current tier (the HIGHEST tier they've unlocked)
+  joinedAt    DateTime @default(now())
+  lastActive  DateTime @default(now())
+  
+  community        Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  currentTier      Tier?         @relation(fields: [currentTierId], references: [id])
+  messages         Message[]
+  scoreHistory     ScoreHistory[]
+  
+  @@unique([communityId, whopId])
+  @@index([whopId])
+  @@index([communityId, totalScore])
+  @@index([currentTierId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  tierId    String   // Tier this message belongs to
+  authorId  String   // Member who sent the message
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isEdited  Boolean  @default(false)
+  isPinned  Boolean  @default(false)
+  
+  tier   Tier   @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  author Member @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  @@index([tierId, createdAt])
+  @@index([authorId])
+}
+
+model ScoreHistory {
+  id          String   @id @default(cuid())
+  memberId    String
+  points      Int
+  reason      String?
+  sourceType  String?
+  sourceId    String?
+  createdAt   DateTime @default(now())
+  
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  
+  @@index([memberId, createdAt])
+}
+
+model Subscription {
+  id               String    @id @default(cuid())
+  communityId      String
+  userId           String
+  whopMembershipId String?   @unique
+  planId           String
+  status           String    @default("active")
+  startedAt        DateTime  @default(now())
+  cancelledAt      DateTime?
+  expiresAt        DateTime?
+  amount           Float     @default(15.00)
+  currency         String    @default("usd")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  
+  @@index([communityId])
+  @@index([userId])
+  @@index([status])
+}
