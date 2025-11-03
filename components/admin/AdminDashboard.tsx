@@ -152,6 +152,7 @@ export default function AdminDashboard({
             ) : selectedLeague ? (
               <div>
                 <LeagueInfo
+                  experienceId={params.experienceId}
                   league={selectedLeague}
                   communityId={params.communityId}
                   onLeagueUpdate={handleLeagueCreated}

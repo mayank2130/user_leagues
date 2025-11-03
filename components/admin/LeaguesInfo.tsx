@@ -10,12 +10,14 @@ interface LeagueInfoProps {
   league: League;
   communityId: string;
   onLeagueUpdate: () => void;
+  experienceId: string;
 }
 
 export default function LeagueInfo({
   league,
   communityId,
   onLeagueUpdate,
+  experienceId,
 }: LeagueInfoProps) {
   const [isEditing, setIsEditing] = useState(false);
 
@@ -32,6 +34,7 @@ export default function LeagueInfo({
         <EditLeagueForm
           leagueId={league.id}
           communityId={communityId}
+          experienceId={experienceId}
           initialName={league.name}
           initialDescription={league.description}
           onSuccess={() => {
