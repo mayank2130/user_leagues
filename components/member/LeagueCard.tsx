@@ -1,10 +1,10 @@
 "use client";
 
-import { LeagueWithTiers, MemberProgressWithTier } from "@/types";
+import { LeagueWithTiers } from "@/types";
 
 interface LeagueCardProps {
   league: LeagueWithTiers;
-  progress?: MemberProgressWithTier;
+  progress?: any;
   isSelected: boolean;
   onSelect: () => void;
 }
