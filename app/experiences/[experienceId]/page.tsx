@@ -110,6 +110,24 @@ export default async function ExperiencePage({
     },
   });
 
+  // Admin view
+  if (member.role === Role.ADMIN) {
+    // Initialize free trial for first-time admin
+    await initializeFreeTrial(community.id, userId, "free_trial_5days");
+
+    // Check trial status
+    const trialStatus = await checkTrialStatus(community.id, userId);
+
+    return (
+      <AdminDashboard
+        params={{ communityId: community.id, experienceId }}
+        trialDaysRemaining={trialStatus.daysRemaining}
+        trialActive={trialStatus.trialActive}
+        adminMemberId={member.id}
+      />
+    );
+  }
+
   // Member view
   await recordDailyCheckIn(member.id);
 
@@ -153,24 +171,6 @@ export default async function ExperiencePage({
       },
     },
   });
-
-  // Admin view
-  if (member.role === Role.ADMIN) {
-    // Initialize free trial for first-time admin
-    await initializeFreeTrial(community.id, userId, "free_trial_5days");
-
-    // Check trial status
-    const trialStatus = await checkTrialStatus(community.id, userId);
-
-    return (
-      <MemberView
-        member={updatedMember!}
-        league={leagueWithTiers!}
-        userName={user.name || user.username || "Member"}
-        memberId={member.id}
-      />
-    );
-  }
 
   return (
     <MemberView
