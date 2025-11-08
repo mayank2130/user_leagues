@@ -237,12 +237,12 @@ export default function TiersList({
           ) : (
             <>
               {/* Tier Header */}
-              <button
-                onClick={() => handleExpandTier(tier.id)}
-                className="w-full text-left p-3 hover:bg-gray-a4 transition-colors cursor-pointer"
-              >
+              <div className="w-full text-left p-3 hover:bg-gray-a4 transition-colors">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div
+                    className="flex items-center gap-2 flex-1 cursor-pointer"
+                    onClick={() => handleExpandTier(tier.id)}
+                  >
                     {tier.icon && <span className="text-3">{tier.icon}</span>}
                     <div>
                       <p className="text-3 font-semibold">{tier.name}</p>
@@ -287,24 +287,30 @@ export default function TiersList({
                         <TrashIcon className="w-4 h-4" />
                       )}
                     </button>
-                    <svg
-                      className={`w-4 h-4 text-gray-11 transition-transform duration-300 ${
-                        expandedTierId === tier.id ? "rotate-180" : ""
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                    <button
+                      onClick={() => handleExpandTier(tier.id)}
+                      className="p-1 hover:bg-gray-a5 rounded transition-colors cursor-pointer"
+                      title="Toggle members"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 14l-7 7m0 0l-7-7m7 7V3"
-                      />
-                    </svg>
+                      <svg
+                        className={`w-4 h-4 text-gray-11 transition-transform duration-300 ${
+                          expandedTierId === tier.id ? "rotate-180" : ""
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                        />
+                      </svg>
+                    </button>
                   </div>
                 </div>
-              </button>
+              </div>
 
               {/* Members List - Animated Slide Down */}
               <div
