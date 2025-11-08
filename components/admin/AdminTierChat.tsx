@@ -21,6 +21,7 @@ interface AdminTierChatProps {
   tiers: Tier[];
   onBack: () => void;
   onMessageSent: () => void;
+  adminMemberId: string;
 }
 
 export default function AdminTierChat({
@@ -28,6 +29,7 @@ export default function AdminTierChat({
   tiers,
   onBack,
   onMessageSent,
+  adminMemberId,
 }: AdminTierChatProps) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -63,7 +65,11 @@ export default function AdminTierChat({
 
     setLoading(true);
     try {
-      const result = await sendTierMessage(selectedTierId, message);
+      const result = await sendTierMessage(
+        selectedTierId,
+        message,
+        adminMemberId
+      );
       if (result.success) {
         setMessage("");
         // Add the new message to the display immediately
@@ -72,7 +78,7 @@ export default function AdminTierChat({
           content: result.message?.content || "",
           createdAt: result.message?.createdAt || new Date(),
           author: {
-            id: "admin",
+            id: adminMemberId,
             name: "Admin",
             whopId: "admin",
           },
@@ -137,10 +143,8 @@ export default function AdminTierChat({
               key={msg.id}
               className="bg-gray-a2 rounded-lg p-3 border border-gray-a6"
             >
-              <div className="flex items-center gap-2 mb-1">
-                <p className="text-2 font-semibold">
-                  {msg.author.name || "Admin"}
-                </p>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <p className="text-2 font-semibold">{msg.author.name}</p>
                 <p className="text-1 text-gray-11">
                   {new Date(msg.createdAt).toLocaleString()}
                 </p>

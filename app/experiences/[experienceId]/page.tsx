@@ -123,6 +123,7 @@ export default async function ExperiencePage({
         params={{ communityId: community.id, experienceId }}
         trialDaysRemaining={trialStatus.daysRemaining}
         trialActive={trialStatus.trialActive}
+        adminMemberId={member.id}
       />
     );
   }

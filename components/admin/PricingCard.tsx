@@ -88,9 +88,6 @@ export default function PricingCard({
         >
           {isLoading ? "Processing..." : "Start Free Trial"}
         </Button>
-        <p className="text-1 text-gray-10 text-center mt-2">
-          Then ${plan.price}/{plan.period}
-        </p>
       </div>
     </div>
   );

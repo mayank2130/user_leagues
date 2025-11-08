@@ -3,17 +3,23 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-// Point values
-const POINTS = {
-	DAILY_CHECK_IN: 10,
-	STREAK_7: 35, // 7-day streak
-	STREAK_14: 70, // 14-day streak
-	STREAK_30: 150, // 30-day streak
-	MESSAGE_READ: 2,
-	SESSION_TIME_5MIN: 5,
-	LINK_CLICK: 2,
-	SUBSCRIPTION_DAILY: 5,
-} as const;
+// Helper to get points config
+async function getPointsValues(communityId: string) {
+	const config = await prisma.pointsConfig.findUnique({
+		where: { communityId },
+	});
+
+	return (
+		config || {
+			dailyCheckIn: 10,
+			messageRead: 2,
+			sessionTime5Min: 5,
+			streak7Days: 35,
+			streak14Days: 70,
+			streak30Days: 150,
+		}
+	);
+}
 
 export async function recordDailyCheckIn(memberId: string) {
 	try {
@@ -34,12 +40,16 @@ export async function recordDailyCheckIn(memberId: string) {
 						},
 					},
 				},
+				community: true,
 			},
 		});
 
 		if (!member || !member.currentTier) {
 			return { success: false, error: "Member not found" };
 		}
+
+		// Get dynamic points config
+		const POINTS = await getPointsValues(member.communityId);
 
 		// Check if already checked in today
 		const lastCheckIn = member.lastCheckedInDate;
@@ -62,21 +72,21 @@ export async function recordDailyCheckIn(memberId: string) {
 			if (daysDiff === 1) {
 				newStreak += 1;
 
-				if (newStreak % 30 === 0) streakBonus = POINTS.STREAK_30;
-				else if (newStreak % 14 === 0) streakBonus = POINTS.STREAK_14;
-				else if (newStreak % 7 === 0) streakBonus = POINTS.STREAK_7;
+				if (newStreak % 30 === 0) streakBonus = POINTS.streak30Days;
+				else if (newStreak % 14 === 0) streakBonus = POINTS.streak14Days;
+				else if (newStreak % 7 === 0) streakBonus = POINTS.streak7Days;
 			} else {
-				newStreak = 1; // Reset streak
+				newStreak = 1;
 			}
 		} else {
 			newStreak = 1;
 		}
 
-		const totalPoints = POINTS.DAILY_CHECK_IN + streakBonus;
+		const totalPoints = POINTS.dailyCheckIn + streakBonus;
 		const newTotalScore = member.totalScore + totalPoints;
 
 		// Find new tier
-		const tiers = member.currentTier?.league?.tiers || [];
+		const tiers = member.currentTier?.league.tiers ?? [];
 		const newTier = tiers
 			.filter((t) => newTotalScore >= t.minScore)
 			.sort((a, b) => b.order - a.order)[0];
@@ -100,7 +110,7 @@ export async function recordDailyCheckIn(memberId: string) {
 		await prisma.scoreHistory.create({
 			data: {
 				memberId,
-				points: POINTS.DAILY_CHECK_IN,
+				points: POINTS.dailyCheckIn,
 				reason: "Daily check-in",
 				sourceType: "daily_checkin",
 			},
@@ -127,7 +137,6 @@ export async function recordDailyCheckIn(memberId: string) {
 
 export async function recordMessageRead(memberId: string, messageId: string) {
 	try {
-		// Check if already read
 		const existing = await prisma.messageRead.findUnique({
 			where: {
 				messageId_memberId: { messageId, memberId },
@@ -152,6 +161,7 @@ export async function recordMessageRead(memberId: string, messageId: string) {
 						},
 					},
 				},
+				community: true,
 			},
 		});
 
@@ -159,22 +169,22 @@ export async function recordMessageRead(memberId: string, messageId: string) {
 			return { success: false, error: "Member not found" };
 		}
 
-		// Create or update read record
+		// Get dynamic points config
+		const POINTS = await getPointsValues(member.communityId);
+
 		await prisma.messageRead.upsert({
 			where: { messageId_memberId: { messageId, memberId } },
 			create: { messageId, memberId, pointsAwarded: true },
 			update: { pointsAwarded: true },
 		});
 
-		const newTotalScore = member.totalScore + POINTS.MESSAGE_READ;
+		const newTotalScore = member.totalScore + POINTS.messageRead;
 
-		// Find new tier
-		const tiers = member.currentTier?.league?.tiers || [];
+		const tiers = member.currentTier?.league.tiers ?? [];
 		const newTier = tiers
 			.filter((t) => newTotalScore >= t.minScore)
 			.sort((a, b) => b.order - a.order)[0];
 
-		// Update member
 		const updatedMember = await prisma.member.update({
 			where: { id: memberId },
 			data: {
@@ -187,11 +197,10 @@ export async function recordMessageRead(memberId: string, messageId: string) {
 			},
 		});
 
-		// Log score history
 		await prisma.scoreHistory.create({
 			data: {
 				memberId,
-				points: POINTS.MESSAGE_READ,
+				points: POINTS.messageRead,
 				reason: "Message read",
 				sourceType: "message_read",
 				sourceId: messageId,
@@ -202,7 +211,7 @@ export async function recordMessageRead(memberId: string, messageId: string) {
 		return {
 			success: true,
 			member: updatedMember,
-			pointsEarned: POINTS.MESSAGE_READ,
+			pointsEarned: POINTS.messageRead,
 		};
 	} catch (error) {
 		console.error("Error recording message read:", error);
@@ -233,6 +242,7 @@ export async function recordSessionTime(
 						},
 					},
 				},
+				community: true,
 			},
 		});
 
@@ -240,16 +250,17 @@ export async function recordSessionTime(
 			return { success: false, error: "Member not found" };
 		}
 
-		const points = POINTS.SESSION_TIME_5MIN;
+		// Get dynamic points config
+		const POINTS = await getPointsValues(member.communityId);
+
+		const points = POINTS.sessionTime5Min;
 		const newTotalScore = member.totalScore + points;
 
-		// Find new tier
-		const tiers = member.currentTier?.league?.tiers || [];
+		const tiers = member.currentTier?.league.tiers ?? [];
 		const newTier = tiers
 			.filter((t) => newTotalScore >= t.minScore)
 			.sort((a, b) => b.order - a.order)[0];
 
-		// Update member
 		const updatedMember = await prisma.member.update({
 			where: { id: memberId },
 			data: {
@@ -263,7 +274,6 @@ export async function recordSessionTime(
 			},
 		});
 
-		// Log score history
 		await prisma.scoreHistory.create({
 			data: {
 				memberId,
@@ -278,5 +288,61 @@ export async function recordSessionTime(
 	} catch (error) {
 		console.error("Error recording session:", error);
 		return { success: false, error: "Failed to record session" };
+	}
+}
+export async function getPointsConfig(communityId: string) {
+	try {
+		let config = await prisma.pointsConfig.findUnique({
+			where: { communityId },
+		});
+
+		// Create default config if doesn't exist
+		if (!config) {
+			config = await prisma.pointsConfig.create({
+				data: {
+					communityId,
+					dailyCheckIn: 10,
+					messageRead: 2,
+					sessionTime5Min: 5,
+					streak7Days: 35,
+					streak14Days: 70,
+					streak30Days: 150,
+				},
+			});
+		}
+
+		return { success: true, config };
+	} catch (error) {
+		console.error("Error fetching points config:", error);
+		return { success: false, error: "Failed to fetch configuration" };
+	}
+}
+
+export async function updatePointsConfig(
+	communityId: string,
+	data: {
+		dailyCheckIn: number;
+		messageRead: number;
+		sessionTime5Min: number;
+		streak7Days: number;
+		streak14Days: number;
+		streak30Days: number;
+	}
+) {
+	try {
+		const config = await prisma.pointsConfig.upsert({
+			where: { communityId },
+			create: {
+				communityId,
+				...data,
+			},
+			update: data,
+		});
+
+		revalidatePath("/admin");
+		return { success: true, config };
+	} catch (error) {
+		console.error("Error updating points config:", error);
+		return { success: false, error: "Failed to update configuration" };
 	}
 }

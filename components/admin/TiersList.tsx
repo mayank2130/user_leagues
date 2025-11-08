@@ -26,12 +26,14 @@ interface TiersListProps {
   tiers: Tier[];
   selectedLeague: League | null;
   onTierDeleted: () => void;
+  adminMemberId: string;
 }
 
 export default function TiersList({
   tiers,
   selectedLeague,
   onTierDeleted,
+  adminMemberId,
 }: TiersListProps) {
   const [expandedTierId, setExpandedTierId] = useState<string | null>(null);
   const [chatTierId, setChatTierId] = useState<string | null>(null);
@@ -148,6 +150,7 @@ export default function TiersList({
         tiers={tiers}
         onBack={() => setChatTierId(null)}
         onMessageSent={onTierDeleted}
+        adminMemberId={adminMemberId}
       />
     );
   }
@@ -215,13 +218,13 @@ export default function TiersList({
                   size="2"
                   onClick={() => handleSaveEdit(tier.id)}
                   disabled={savingId === tier.id}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  variant="classic"
+                  className="cursor-pointer"
                 >
                   {savingId === tier.id ? "Saving..." : "Save"}
                 </Button>
                 <Button
                   size="2"
-                  variant="classic"
                   onClick={() => {
                     setEditingId(null);
                     setEditFormData(null);

@@ -14,12 +14,14 @@ interface AdminDashboardProps {
   params: { communityId: string; experienceId: string };
   trialDaysRemaining?: number;
   trialActive?: boolean;
+  adminMemberId: string;
 }
 
 export default function AdminDashboard({
   params,
   trialDaysRemaining = 5,
   trialActive = true,
+  adminMemberId,
 }: AdminDashboardProps) {
   const router = useRouter();
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null);
@@ -214,6 +216,7 @@ export default function AdminDashboard({
                     tiers={tiers}
                     selectedLeague={selectedLeague}
                     onTierDeleted={handleTierDeleted}
+                    adminMemberId={adminMemberId}
                   />
                 )
               ) : (

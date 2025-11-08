@@ -22,6 +22,7 @@ model Community {
   subscriptions Subscription[]
   league        League?
   members       Member[]
+  pointsConfig  PointsConfig?
 }
 
 model League {
@@ -67,9 +68,9 @@ model Member {
   role              Role     @default(MEMBER)
   totalScore        Int      @default(0)
   currentTierId     String?
-  lastCheckedInDate DateTime? // Track daily check-in (date only, no time)
-  checkInStreak     Int      @default(0) // Consecutive days checked in
-  totalSessionTime  Int      @default(0) // Total minutes spent
+  lastCheckedInDate DateTime?
+  checkInStreak     Int      @default(0)
+  totalSessionTime  Int      @default(0)
   joinedAt          DateTime @default(now())
   lastActive        DateTime @default(now())
   
@@ -77,7 +78,6 @@ model Member {
   currentTier      Tier?          @relation(fields: [currentTierId], references: [id])
   messages         Message[]
   scoreHistory     ScoreHistory[]
-  dailyActivity    DailyActivity[]
   messageReads     MessageRead[]
   
   @@unique([communityId, whopId])
@@ -105,11 +105,11 @@ model Message {
 }
 
 model MessageRead {
-  id        String   @id @default(cuid())
-  messageId String
-  memberId  String
-  viewedAt  DateTime @default(now())
-  pointsAwarded Boolean @default(false) // Track if points already given
+  id            String   @id @default(cuid())
+  messageId     String
+  memberId      String
+  viewedAt      DateTime @default(now())
+  pointsAwarded Boolean  @default(false)
   
   message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
   member  Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
@@ -118,29 +118,12 @@ model MessageRead {
   @@index([memberId, viewedAt])
 }
 
-model DailyActivity {
-  id           String   @id @default(cuid())
-  memberId     String
-  date         DateTime // Date in IST timezone
-  checkedIn    Boolean  @default(false)
-  sessionCount Int      @default(0)
-  timeSpentMin Int      @default(0)
-  messagesRead Int      @default(0)
-  linksClicked Int      @default(0)
-  pointsEarned Int      @default(0)
-  
-  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  
-  @@unique([memberId, date])
-  @@index([memberId, date])
-}
-
 model ScoreHistory {
   id          String   @id @default(cuid())
   memberId    String
   points      Int
   reason      String?
-  sourceType  String? // "daily_checkin", "streak_bonus", "message_read", "session_time", "subscription"
+  sourceType  String?
   sourceId    String?
   createdAt   DateTime @default(now())
   
@@ -169,4 +152,24 @@ model Subscription {
   @@index([communityId])
   @@index([userId])
   @@index([status])
+}
+
+model PointsConfig {
+  id                String   @id @default(cuid())
+  communityId       String   @unique
+  
+  dailyCheckIn      Int      @default(10)
+  messageRead       Int      @default(2)
+  sessionTime5Min   Int      @default(5)
+  
+  streak7Days       Int      @default(35)
+  streak14Days      Int      @default(70)
+  streak30Days      Int      @default(150)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  community         Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  
+  @@index([communityId])
 }

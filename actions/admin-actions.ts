@@ -155,17 +155,13 @@ export async function deleteTier(tierId: string) {
 	}
 }
 
-export async function sendTierMessage(tierId: string, content: string) {
+export async function sendTierMessage(tierId: string, content: string, adminId: string) {
 	try {
-		// Get the admin member (assuming admin is the sender)
-		// You may need to pass adminMemberId or get it from context
-		// For now, we'll create the message without author (admin tier messages)
-
 		const message = await prisma.message.create({
 			data: {
 				content,
 				tierId,
-				authorId: "cmhj0xj9l0002v9ps3wqakyi4", // This should be the actual admin member ID
+				authorId: adminId,
 			},
 		});
 

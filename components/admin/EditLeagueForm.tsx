@@ -69,10 +69,10 @@ export default function EditLeagueForm({
         rows={2}
       />
       <div className="flex gap-2">
-        <Button type="submit" size="2" disabled={loading}>
+        <Button type="submit" size="2" variant="classic" disabled={loading}>
           {loading ? "Saving..." : isEditMode ? "Save" : "Create"}
         </Button>
-        <Button type="button" size="2" variant="classic" onClick={onCancel}>
+        <Button type="button" size="2" onClick={onCancel}>
           Cancel
         </Button>
       </div>
