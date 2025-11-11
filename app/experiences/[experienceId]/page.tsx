@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import MemberView from "@/components/member/MemberView";
 import AdminDashboard from "@/components/admin/AdminDashboard";
+import TrialExpired from "@/components/TrialExpired";
 import { recordDailyCheckIn } from "@/actions/point-actions";
 import {
   initializeFreeTrial,
@@ -118,6 +119,11 @@ export default async function ExperiencePage({
     // Check trial status
     const trialStatus = await checkTrialStatus(community.id, userId);
 
+    // If trial expired, show paywall
+    if (!trialStatus.trialActive && trialStatus.status === "expired") {
+      return <TrialExpired isAdmin={true} communityName={community.name} />;
+    }
+
     return (
       <AdminDashboard
         params={{ communityId: community.id, experienceId }}
@@ -129,6 +135,14 @@ export default async function ExperiencePage({
   }
 
   // Member view
+  // Check trial status for members too
+  const trialStatus = await checkTrialStatus(community.id, userId);
+
+  // If trial expired, show locked screen for members
+  if (!trialStatus.trialActive && trialStatus.status === "expired") {
+    return <TrialExpired isAdmin={false} communityName={community.name} />;
+  }
+
   await recordDailyCheckIn(member.id);
 
   // Member view - fetch full league data with tiers

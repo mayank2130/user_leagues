@@ -63,9 +63,6 @@ export default function PricingCard({
             vs monthly billing
           </p>
         )}
-
-        {/* Free Trial Badge */}
-        <p className="text-2 font-semibold text-blue-11">✨ 5-Day Free Trial</p>
       </div>
 
       {/* Features */}
@@ -86,7 +83,7 @@ export default function PricingCard({
           disabled={isLoading}
           className="w-full cursor-pointer"
         >
-          {isLoading ? "Processing..." : "Start Free Trial"}
+          {isLoading ? "Processing..." : "Get Plan"}
         </Button>
       </div>
     </div>

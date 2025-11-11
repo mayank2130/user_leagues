@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@whop/react/components";
 import { useIframeSdk } from "@whop/react";
 import PricingCard from "@/components/admin/PricingCard";
-import { createCheckoutConfiguration } from "@/actions/payment-actions";
+import { getPlanId } from "@/actions/payment-actions";
+import { Button } from "@whop/react/components";
+import { ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const PLANS = [
   {
@@ -38,25 +40,25 @@ const PLANS = [
 export default function PricingPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const iframeSdk = useIframeSdk();
-
-  const handlePurchase = async (planId: string) => {
-    setLoading(planId);
+  const router = useRouter();
+  const handlePurchase = async (planType: string) => {
+    setLoading(planType);
     try {
-      const checkoutConfig = await createCheckoutConfiguration(planId);
+      const result = await getPlanId(planType);
 
-      if (!checkoutConfig.success) {
-        alert(checkoutConfig.error);
+      if (!result.success || !result.planId) {
+        alert(result.error || "Plan ID not found");
         setLoading(null);
         return;
       }
 
       const res = await iframeSdk.inAppPurchase({
-        planId: checkoutConfig.plan?.id ?? "",
-        id: checkoutConfig.id,
+        planId: result.planId,
       });
 
       if (res.status === "ok") {
         alert("Payment successful! Your subscription is now active.");
+        window.location.reload();
       } else {
         alert("Payment cancelled or failed");
       }
@@ -70,6 +72,16 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-gray-a1 py-12 px-6">
+      <div className="flex justify-start mb-4">
+        <Button
+          variant="surface"
+          className="cursor-pointer"
+          onClick={() => router.back()}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </Button>
+      </div>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">

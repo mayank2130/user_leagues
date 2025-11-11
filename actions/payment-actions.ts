@@ -1,67 +1,32 @@
 "use server";
 
-import { whopsdk } from "@/lib/whop-sdk";
 import { prisma } from "@/lib/prisma";
-import { PlanType } from "@whop/sdk/resources";
 
-const PLAN_CONFIG = {
-	monthly: {
-		name: "Monthly Plan",
-		price: 3500, // $35 in cents
-		plan_type: "subscription",
-		billing_period: "month",
-	},
-	yearly: {
-		name: "Yearly Plan",
-		price: 29900, // $299 in cents
-		plan_type: "subscription",
-		billing_period: "year",
-	},
+const PLAN_IDS = {
+	monthly: "plan_pB362KUaw5n8L",
+	yearly: "plan_1DiqxuOTTpaWg",
 } as const;
 
-export async function createCheckoutConfiguration(planId: string) {
+export async function getPlanId(planType: string) {
 	try {
-		const plan = PLAN_CONFIG[planId as keyof typeof PLAN_CONFIG];
+		const planId = PLAN_IDS[planType as keyof typeof PLAN_IDS];
 
-		if (!plan) {
-			return { success: false, error: "Invalid plan" };
-		}
-
-		const companyId = process.env.NEXT_PUBLIC_WHOP_COMPANY_ID;
-
-		if (!companyId) {
-			return { success: false, error: "Company ID not configured" };
-		}
-
-		const checkoutConfiguration = await whopsdk.checkoutConfigurations.create({
-			plan: {
-				company_id: companyId,
-				initial_price: plan.price,
-				plan_type: plan.plan_type as PlanType,
-				billing_period: Number(plan.billing_period),
-			},
-			metadata: {
-				plan_id: planId,
-				plan_name: plan.name,
-			},
-		});
-
-		// Type guard - check for success
-		if (!checkoutConfiguration.plan) {
-			return { success: false, error: "Failed to create checkout" };
+		if (!planId) {
+			return {
+				success: false,
+				error: `Plan ID not configured for ${planType}. Please create the plan in your Whop dashboard and set NEXT_PUBLIC_WHOP_${planType.toUpperCase()}_PLAN_ID in your environment variables.`,
+			};
 		}
 
 		return {
 			success: true,
-			plan: checkoutConfiguration.plan,
-			id: checkoutConfiguration.id,
-			purchase_url: checkoutConfiguration.purchase_url,
+			planId,
 		};
 	} catch (error) {
-		console.error("Error creating checkout configuration:", error);
+		console.error("Error getting plan ID:", error);
 		return {
 			success: false,
-			error: "Failed to create checkout configuration",
+			error: "Failed to get plan ID",
 		};
 	}
 }
