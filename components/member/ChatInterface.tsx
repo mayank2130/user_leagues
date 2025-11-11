@@ -33,14 +33,14 @@ export default function ChatInterface({
   }, [tier.id, memberId]);
 
   return (
-    <div className="bg-gray-a2 border border-gray-a6 rounded-xl overflow-hidden flex flex-col h-[calc(100vh-200px)]">
+    <div className="bg-gray-a2 border border-gray-a6 rounded-xl overflow-hidden flex flex-col h-[500px] md:h-[600px] lg:h-[calc(100vh-200px)]">
       {/* Tier Tabs */}
-      <div className="border-b border-gray-a6 p-4 flex gap-2 overflow-x-auto">
+      <div className="border-b border-gray-a6 p-3 md:p-4 flex gap-2 overflow-x-auto scrollbar-thin">
         {accessibleTiers.map((t) => (
           <button
             key={t.id}
             onClick={() => onSelectTier(t.id)}
-            className={`px-4 py-2 rounded-lg text-2 font-medium whitespace-nowrap transition-colors ${
+            className={`px-3 py-2 md:px-4 md:py-2 rounded-lg text-2 font-medium whitespace-nowrap transition-colors ${
               selectedTierId === t.id
                 ? "bg-blue-9 text-white"
                 : "bg-gray-a3 text-gray-11 hover:bg-gray-a4"
@@ -57,12 +57,12 @@ export default function ChatInterface({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4">
         {tier.messages.length > 0 ? (
           tier.messages.map((message) => (
             <div
               key={message.id}
-              className="bg-gray-a3 rounded-lg p-4 border border-gray-a6"
+              className="bg-gray-a3 rounded-lg p-3 md:p-4 border border-gray-a6"
             >
               {message.isPinned && (
                 <div className="flex items-center gap-2 mb-2 text-yellow-11">
@@ -76,26 +76,28 @@ export default function ChatInterface({
                   <span className="text-1 font-medium">Pinned</span>
                 </div>
               )}
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-blue-9 rounded-full flex items-center justify-center text-white font-semibold text-2">
+              <div className="flex items-start gap-2 md:gap-3">
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-9 rounded-full flex items-center justify-center text-white font-semibold text-2 flex-shrink-0">
                   {message.author.name?.[0] || "A"}
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <span className="font-semibold text-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2 mb-1">
+                    <span className="font-semibold text-3 truncate">
                       {message.author.name || "Admin"}
                     </span>
-                    <span className="text-1 text-gray-11">
+                    <span className="text-1 text-gray-11 flex-shrink-0">
                       {new Date(message.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="text-3 text-gray-12">{message.content}</p>
+                  <p className="text-3 text-gray-12 break-words">
+                    {message.content}
+                  </p>
                 </div>
               </div>
             </div>
           ))
         ) : (
-          <div className="text-center py-12">
+          <div className="text-center py-8 md:py-12">
             <p className="text-gray-11">No messages in this tier yet</p>
           </div>
         )}

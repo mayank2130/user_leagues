@@ -69,11 +69,13 @@ export default function MemberView({
     <div className="min-h-screen bg-gray-a1">
       {/* How Scores Work Dialog */}
       {showScoresInfo && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-2 border border-gray-a6 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-gray-2 border-0 sm:border border-gray-a6 rounded-none sm:rounded-lg max-w-2xl w-full h-full sm:h-auto sm:max-h-[90vh] overflow-y-auto">
             {/* Header */}
-            <div className="sticky top-0 bg-gray-2 border-b border-gray-a6 p-4 flex items-center justify-between">
-              <h2 className="text-5 font-bold text-gray-12">How Points Work</h2>
+            <div className="sticky top-0 bg-gray-2 border-b border-gray-a6 p-4 flex items-center justify-between z-10">
+              <h2 className="text-4 md:text-5 font-bold text-gray-12">
+                How Points Work
+              </h2>
               <button
                 onClick={() => setShowScoresInfo(false)}
                 className="p-2 hover:bg-gray-a3 rounded-full transition-colors"
@@ -83,7 +85,7 @@ export default function MemberView({
             </div>
 
             {/* Content */}
-            <div className="p-6 space-y-6">
+            <div className="p-4 md:p-6 space-y-4 md:space-y-6">
               <div>
                 <p className="text-3 text-gray-11 leading-relaxed mb-4">
                   Earn points by being active in the community and climb through
@@ -93,7 +95,7 @@ export default function MemberView({
 
               {/* Daily Activities */}
               <div className="bg-gray-a3 border border-gray-a6 rounded-lg p-4">
-                <h3 className="text-4 font-semibold text-gray-12 mb-3">
+                <h3 className="text-3 md:text-4 font-semibold text-gray-12 mb-3">
                   📅 Daily Activities
                 </h3>
 
@@ -132,7 +134,7 @@ export default function MemberView({
 
               {/* Streak Bonuses */}
               <div className="bg-gradient-to-br from-blue-a2 to-purple-a2 border border-blue-a6 rounded-lg p-4">
-                <h3 className="text-4 font-semibold text-gray-12 mb-3">
+                <h3 className="text-3 md:text-4 font-semibold text-gray-12 mb-3">
                   🔥 Streak Bonuses
                 </h3>
 
@@ -172,7 +174,7 @@ export default function MemberView({
 
               {/* Tier Progression */}
               <div className="bg-gray-a3 border border-gray-a6 rounded-lg p-4">
-                <h3 className="text-4 font-semibold text-gray-12 mb-3">
+                <h3 className="text-3 md:text-4 font-semibold text-gray-12 mb-3">
                   🎯 Tier Progression
                 </h3>
 
@@ -220,7 +222,7 @@ export default function MemberView({
 
               {/* Tips */}
               <div className="bg-green-a2 border border-green-a6 rounded-lg p-4">
-                <h3 className="text-4 font-semibold text-gray-12 mb-3">
+                <h3 className="text-3 md:text-4 font-semibold text-gray-12 mb-3">
                   💡 Pro Tips
                 </h3>
 
@@ -247,28 +249,33 @@ export default function MemberView({
       )}
 
       {/* Header */}
-      <div className="flex flex-row justify-center items-center gap-6 p-6">
-        <div className="flex flex-col gap-6 p-6">
-          {/* League Progress Sidebar */}
-          <div className="border-b border-gray-a6 p-6">
-            <h1 className="text-7 font-bold mb-2">Welcome, {userName}!</h1>
-            <div className="flex flex-row items-center justify-between">
-              <p className="text-3 text-gray-11">
-                Your score:{" "}
-                <span className="font-semibold">{member.totalScore}</span>
-              </p>
-              <div
-                className="flex flex-row cursor-pointer items-center gap-1 hover:underline"
-                onClick={() => {
-                  setShowScoresInfo(true);
-                }}
-              >
-                <p className="text-3 text-gray-11">How scores work?</p>
-                <InfoIcon className="w-4 h-4" />
-              </div>
-            </div>
+      <div className="max-w-7xl mx-auto px-4 py-4 md:py-6">
+        {/* Welcome Section */}
+        <div className="mb-4 md:mb-6">
+          <h1 className="text-5 md:text-7 font-bold mb-2">
+            Welcome, {userName}!
+          </h1>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <p className="text-3 text-gray-11">
+              Your score:{" "}
+              <span className="font-semibold">{member.totalScore}</span>
+            </p>
+            <button
+              className="flex items-center gap-1 text-3 text-gray-11 hover:underline cursor-pointer w-fit"
+              onClick={() => {
+                setShowScoresInfo(true);
+              }}
+            >
+              <span>How scores work?</span>
+              <InfoIcon className="w-4 h-4" />
+            </button>
           </div>
-          <div className="">
+        </div>
+
+        {/* Main Content - Stacked on mobile, side-by-side on desktop */}
+        <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
+          {/* League Progress Sidebar */}
+          <div className="lg:w-80 xl:w-96">
             <LeagueProgress
               league={league}
               member={member}
@@ -277,24 +284,24 @@ export default function MemberView({
               onSelectTier={setSelectedTierId}
             />
           </div>
-        </div>
 
-        {/* Chat Interface */}
-        <div className="flex-1">
-          {displayTier ? (
-            <ChatInterface
-              tier={displayTier}
-              member={member}
-              accessibleTiers={accessibleTiers}
-              selectedTierId={selectedTierId}
-              onSelectTier={setSelectedTierId}
-              memberId={memberId}
-            />
-          ) : (
-            <div className="bg-gray-a2 border border-gray-a6 rounded-xl p-8 text-center">
-              <p className="text-gray-11">No tiers available</p>
-            </div>
-          )}
+          {/* Chat Interface */}
+          <div className="flex-1 min-h-[500px] lg:min-h-0">
+            {displayTier ? (
+              <ChatInterface
+                tier={displayTier}
+                member={member}
+                accessibleTiers={accessibleTiers}
+                selectedTierId={selectedTierId}
+                onSelectTier={setSelectedTierId}
+                memberId={memberId}
+              />
+            ) : (
+              <div className="bg-gray-a2 border border-gray-a6 rounded-xl p-8 text-center">
+                <p className="text-gray-11">No tiers available</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

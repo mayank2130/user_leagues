@@ -34,20 +34,26 @@ export default function LeagueProgress({
     : 100;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Current Tier Info */}
-      <div className="bg-gray-a2 border border-gray-a6 rounded-lg p-6">
-        <h2 className="text-4 font-semibold mb-4">Your Progress</h2>
+      <div className="bg-gray-a2 border border-gray-a6 rounded-lg p-3 md:p-5">
+        <h2 className="text-3 md:text-4 font-semibold mb-3 md:mb-4">
+          Your Progress
+        </h2>
 
         {member.currentTier ? (
           <>
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-3 md:mb-4">
               {member.currentTier.icon && (
-                <span className="text-5">{member.currentTier.icon}</span>
+                <span className="text-4 md:text-5">
+                  {member.currentTier.icon}
+                </span>
               )}
               <div>
                 <p className="text-2 text-gray-11">Current Tier</p>
-                <p className="text-4 font-bold">{member.currentTier.name}</p>
+                <p className="text-3 md:text-4 font-bold">
+                  {member.currentTier.name}
+                </p>
               </div>
             </div>
 
@@ -75,8 +81,10 @@ export default function LeagueProgress({
       </div>
 
       {/* Accessible Tiers */}
-      <div className="bg-gray-a2 border border-gray-a6 rounded-lg p-6">
-        <h2 className="text-4 font-semibold mb-4">Available Tiers</h2>
+      <div className="bg-gray-a2 border border-gray-a6 rounded-lg p-3 md:p-5">
+        <h2 className="text-3 md:text-4 font-semibold mb-3 md:mb-4">
+          Available Tiers
+        </h2>
 
         {accessibleTiers && accessibleTiers.length > 0 ? (
           <div className="space-y-2">
@@ -87,13 +95,13 @@ export default function LeagueProgress({
                 className={`w-full text-left p-3 rounded-lg border transition-colors ${
                   selectedTierId === tier.id
                     ? "bg-blue-a3 border-blue-9"
-                    : "bg-gray-a3 border-gray-a6 hover:border-blue-9"
+                    : "bg-gray-a3 border-gray-a6 hover:border-blue-9 active:border-blue-9"
                 }`}
               >
                 <div className="flex items-center gap-2">
                   {tier.icon && <span className="text-3">{tier.icon}</span>}
-                  <div>
-                    <p className="text-3 font-semibold">{tier.name}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-3 font-semibold truncate">{tier.name}</p>
                     <p className="text-2 text-gray-11">
                       {tier.minScore} points required
                     </p>
