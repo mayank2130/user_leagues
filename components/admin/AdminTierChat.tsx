@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Tier } from "@prisma/client";
 import { sendTierMessage, getTierMessages } from "@/actions/admin-actions";
-import { SendHorizontal, X } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 
 interface Message {
   id: string;
@@ -19,15 +19,16 @@ interface Message {
 interface AdminTierChatProps {
   tierId: string;
   tiers: Tier[];
-  onBack: () => void;
   onMessageSent: () => void;
   adminMemberId: string;
 }
 
+// Module-level cache that persists across component mount/unmount
+const messagesCache: Record<string, Message[]> = {};
+
 export default function AdminTierChat({
   tierId,
   tiers,
-  onBack,
   onMessageSent,
   adminMemberId,
 }: AdminTierChatProps) {
@@ -41,13 +42,29 @@ export default function AdminTierChat({
 
   const currentTier = tiers.find((t) => t.id === selectedTierId);
 
-  // Fetch messages when tier changes
+  // Update selected tier when tierId prop changes
+  useEffect(() => {
+    setSelectedTierId(tierId);
+  }, [tierId]);
+
+  // Fetch messages when tier changes (only if not cached)
   useEffect(() => {
     const fetchMessages = async () => {
+      // Check if messages are already cached
+      if (messagesCache[selectedTierId]) {
+        setMessages(messagesCache[selectedTierId]);
+        setFetchingMessages(false);
+        return;
+      }
+
+      // Fetch from server if not cached
       setFetchingMessages(true);
       const result = await getTierMessages(selectedTierId);
       if (result.success) {
-        setMessages(result.messages || []);
+        const fetchedMessages = result.messages || [];
+        setMessages(fetchedMessages);
+        // Cache the messages
+        messagesCache[selectedTierId] = fetchedMessages;
       }
       setFetchingMessages(false);
     };
@@ -58,6 +75,16 @@ export default function AdminTierChat({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessage(e.target.value);
+
+    // Auto-resize textarea
+    const textarea = e.target;
+    textarea.style.height = "auto";
+    const newHeight = Math.min(textarea.scrollHeight, 128);
+    textarea.style.height = `${newHeight}px`;
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +99,9 @@ export default function AdminTierChat({
       );
       if (result.success) {
         setMessage("");
-        // Add the new message to the display immediately
+        if (inputRef.current) {
+          inputRef.current.style.height = "auto";
+        }
         const newMessage: Message = {
           id: result.message?.id || "",
           content: result.message?.content || "",
@@ -83,7 +112,10 @@ export default function AdminTierChat({
             whopId: "admin",
           },
         };
-        setMessages((prev) => [...prev, newMessage]);
+        const updatedMessages = [...messages, newMessage];
+        setMessages(updatedMessages);
+        // Update cache with new message
+        messagesCache[selectedTierId] = updatedMessages;
         if (inputRef.current) {
           inputRef.current.focus();
         }
@@ -97,43 +129,13 @@ export default function AdminTierChat({
   };
 
   return (
-    <div className="flex flex-col h-[600px] bg-gray-a3 border border-gray-a6 overflow-hidden">
-      {/* Header with Back Button and Tabs */}
-      <div className="border-b border-gray-a6 bg-gray-a2 p-2 flex items-center justify-start gap-4">
-        <button
-          onClick={onBack}
-          className="text-gray-11 hover:text-gray-12 text-1 flex items-center gap-2 cursor-pointer border rounded-full border-gray-a6 px-3 py-2 w-fit"
-        >
-          <X className="w-4 h-4" />
-        </button>
-
-        {/* Tier Tabs */}
-        <div className="flex gap-2 overflow-x-auto">
-          {tiers.map((tier) => (
-            <button
-              key={tier.id}
-              onClick={() => setSelectedTierId(tier.id)}
-              className={`px-3.5 py-2 rounded-lg text-2 font-medium whitespace-nowrap transition-colors cursor-pointer ${
-                selectedTierId === tier.id
-                  ? "bg-gray-a3 text-white border border-gray-a6"
-                  : "text-gray-11 hover:text-gray-12"
-              }`}
-            >
-              {tier.icon} {tier.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Current Tier Info */}
+    <div className="flex flex-col h-[600px] bg-gray-a2 border border-gray-a6 overflow-hidden">
       <div className="px-4 py-2 bg-gray-a2 border-b border-gray-a6 text-2 text-gray-11">
         Posting to:{" "}
         <span className="font-semibold tracking-wide">
           {currentTier?.name} Tier
         </span>
       </div>
-
-      {/* Messages Display */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {fetchingMessages ? (
           <p className="text-gray-11 text-center text-2">Loading messages...</p>
@@ -149,7 +151,7 @@ export default function AdminTierChat({
                   {new Date(msg.createdAt).toLocaleString()}
                 </p>
               </div>
-              <p className="text-3 text-gray-12">{msg.content}</p>
+              <p className="text-3 text-gray-12 mt-2">{msg.content}</p>
             </div>
           ))
         ) : (
@@ -157,36 +159,32 @@ export default function AdminTierChat({
         )}
         <div ref={messagesEndRef} />
       </div>
-
-      {/* Message Input */}
       <form
         onSubmit={handleSendMessage}
-        className="mt-auto p-2.5 px-5 border-t border-gray-a6"
+        className="mt-auto p-4 border-t border-gray-a6"
       >
-        <textarea
-          ref={inputRef}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Type your message..."
-          className="w-full px-4 py-3 rounded-xl placeholder-gray-10 resize-none focus:outline-none border-2 border-[#484848]"
-          rows={3}
-          disabled={loading}
-        />
-        <div className="flex gap-2 justify-center mt-2.5">
-          <button
-            type="button"
-            onClick={onBack}
+        <div className="relative flex items-end gap-2 px-4 py-3 rounded-2xl border-2 border-[#484848] bg-transparent focus-within:border-gray-a8 transition-colors">
+          <textarea
+            ref={inputRef}
+            value={message}
+            onChange={handleTextareaChange}
+            placeholder="Type your message..."
+            className="flex-1 bg-transparent placeholder-gray-10 resize-none focus:outline-none text-gray-12 max-h-32 overflow-y-auto"
+            rows={1}
             disabled={loading}
-            className="p-3 rounded-full bg-gray-a3 hover:bg-gray-a4 text-gray-11 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage(e);
+              }
+            }}
+          />
           <button
             type="submit"
             disabled={loading || !message.trim()}
-            className="p-3 rounded-full bg-gray-a3 hover:bg-gray-a4 text-gray-11 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+            className="flex-shrink-0 p-2 rounded-lg bg-gray-12 hover:bg-gray-11 text-gray-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-12 transition-all"
           >
-            <SendHorizontal className="w-4 h-4" />
+            <ArrowUp className="w-5 h-5" />
           </button>
         </div>
       </form>

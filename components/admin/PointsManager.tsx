@@ -233,7 +233,8 @@ export default function PointsManager({
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
+            variant="classic"
+            className="w-full text-white cursor-pointer"
           >
             {saving ? "Saving..." : "Save Configuration"}
           </Button>
