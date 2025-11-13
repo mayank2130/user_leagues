@@ -12,7 +12,7 @@ const PLANS = [
   {
     id: "monthly",
     name: "Monthly",
-    price: 35,
+    price: 15,
     period: "month",
     features: [
       "1 League with unlimited tiers",
@@ -24,10 +24,10 @@ const PLANS = [
   {
     id: "yearly",
     name: "Yearly",
-    price: 299,
+    price: 150,
     period: "year",
-    originalPrice: 35 * 12, // $420 annual if monthly
-    savings: 35 * 12 - 299, // $121 savings
+    originalPrice: 180, // $420 annual if monthly
+    savings: 15 * 12 - 150, // $121 savings
     features: [
       "Everything in Monthly",
       "Priority support",
