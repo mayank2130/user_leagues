@@ -3,8 +3,8 @@
 import { prisma } from "@/lib/prisma";
 
 const PLAN_IDS = {
-	monthly: "plan_pB362KUaw5n8L",
-	yearly: "plan_1DiqxuOTTpaWg",
+	monthly: "plan_r6sogDdGOW052",
+	yearly: "plan_J952sOzS1Vac7",
 } as const;
 
 export async function getPlanId(planType: string) {
