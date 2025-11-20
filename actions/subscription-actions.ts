@@ -2,6 +2,48 @@
 
 import { prisma } from "@/lib/prisma";
 
+/**
+ * Updates all expired subscriptions in the database
+ * This ensures subscription statuses are accurate even if users haven't visited
+ */
+export async function updateExpiredSubscriptions() {
+	try {
+		const now = new Date();
+
+		// Find all active subscriptions that have expired
+		const expiredSubs = await prisma.subscription.findMany({
+			where: {
+				status: "active",
+				expiresAt: {
+					lt: now, // Less than current time
+				},
+			},
+		});
+
+		if (expiredSubs.length === 0) {
+			return { success: true, updated: 0 };
+		}
+
+		// Update all expired subscriptions to "expired" status
+		const result = await prisma.subscription.updateMany({
+			where: {
+				id: {
+					in: expiredSubs.map((sub) => sub.id),
+				},
+			},
+			data: {
+				status: "expired",
+			},
+		});
+
+		console.log(`Updated ${result.count} expired subscriptions`);
+		return { success: true, updated: result.count };
+	} catch (error) {
+		console.error("Error updating expired subscriptions:", error);
+		return { success: false, error: "Failed to update expired subscriptions", updated: 0 };
+	}
+}
+
 export async function initializeFreeTrial(
 	communityId: string,
 	userId: string,

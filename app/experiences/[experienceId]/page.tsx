@@ -10,6 +10,7 @@ import { recordDailyCheckIn } from "@/actions/point-actions";
 import {
   initializeFreeTrial,
   checkTrialStatus,
+  updateExpiredSubscriptions,
 } from "@/actions/subscription-actions";
 
 export default async function ExperiencePage({
@@ -38,6 +39,9 @@ export default async function ExperiencePage({
       name: experience.company.title,
     },
   });
+
+  // Update any expired subscriptions before checking trial status
+  await updateExpiredSubscriptions();
 
   const memberRole = isWhopAdmin ? Role.ADMIN : Role.MEMBER;
 
