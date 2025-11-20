@@ -2,13 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@whop/react/components";
-import TiersList from "@/components/admin/TiersList";
 import CreateTierForm from "@/components/admin/CreateTierForm";
-import { getLeague, getTiers } from "@/actions/admin-actions";
+import { getLeague, getTierMembers, getTiers } from "@/actions/admin-actions";
 import { League, Tier } from "@prisma/client";
 import EditLeagueForm from "@/components/admin/EditLeagueForm";
-import LeagueInfo from "@/components/admin/LeaguesInfo";
 import { useRouter } from "next/navigation";
+import { Pencil, Plus, Menu, X, Loader2 } from "lucide-react";
+import AdminTierChat from "./AdminTierChat";
+import TierSettings from "./TierSettings";
+import LeaguesInfo from "./LeaguesInfo";
+
+interface MemberInfo {
+  id: string;
+  name: string;
+  score: number;
+}
 
 interface AdminDashboardProps {
   params: { communityId: string; experienceId: string };
@@ -29,6 +37,18 @@ export default function AdminDashboard({
   const [showCreateLeague, setShowCreateLeague] = useState(false);
   const [showCreateTier, setShowCreateTier] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showEditLeague, setShowEditLeague] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<Tier | null>(null);
+  const [showChat, setShowChat] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const [tierMembers, setTierMembers] = useState<Record<string, MemberInfo[]>>(
+    {}
+  );
+  const [loadingMembers, setLoadingMembers] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const initParams = async () => {
@@ -37,13 +57,31 @@ export default function AdminDashboard({
         setSelectedLeague(result.league);
         const tiersResult = await getTiers(result.league.id);
         if (tiersResult.success) {
-          setTiers(tiersResult.tiers || []);
+          const loadedTiers = tiersResult.tiers || [];
+          setTiers(loadedTiers);
+          if (loadedTiers.length > 0) {
+            setSelectedTier(loadedTiers[0]);
+          }
         }
       }
       setLoading(false);
     };
     initParams();
   }, [params]);
+
+  const handleGetTierMembers = async (tierId: string) => {
+    if (!tierMembers[tierId]) {
+      setLoadingMembers((prev) => ({ ...prev, [tierId]: true }));
+      const result = await getTierMembers(tierId);
+      if (result.success) {
+        setTierMembers((prev) => ({
+          ...prev,
+          [tierId]: result.members,
+        }));
+      }
+      setLoadingMembers((prev) => ({ ...prev, [tierId]: false }));
+    }
+  };
 
   const handleLeagueCreated = async () => {
     setShowCreateLeague(false);
@@ -52,7 +90,11 @@ export default function AdminDashboard({
       setSelectedLeague(result.league);
       const tiersResult = await getTiers(result.league.id);
       if (tiersResult.success) {
-        setTiers(tiersResult.tiers || []);
+        const loadedTiers = tiersResult.tiers || [];
+        setTiers(loadedTiers);
+        if (loadedTiers.length > 0 && !selectedTier) {
+          setSelectedTier(loadedTiers[0]);
+        }
       }
     }
   };
@@ -61,7 +103,14 @@ export default function AdminDashboard({
     if (selectedLeague) {
       const result = await getTiers(selectedLeague.id);
       if (result.success) {
-        setTiers(result.tiers || []);
+        const loadedTiers = result.tiers || [];
+        setTiers(loadedTiers);
+        if (
+          selectedTier &&
+          !loadedTiers.find((t) => t.id === selectedTier.id)
+        ) {
+          setSelectedTier(loadedTiers.length > 0 ? loadedTiers[0] : null);
+        }
       }
     }
   };
@@ -71,26 +120,36 @@ export default function AdminDashboard({
     if (selectedLeague) {
       const result = await getTiers(selectedLeague.id);
       if (result.success) {
-        setTiers(result.tiers || []);
+        const loadedTiers = result.tiers || [];
+        setTiers(loadedTiers);
+        if (loadedTiers.length > 0) {
+          setSelectedTier(loadedTiers[loadedTiers.length - 1]);
+        }
       }
+    }
+  };
+
+  const handleTierSelect = (tier: Tier) => {
+    setSelectedTier(tier);
+    setSidebarOpen(false);
+    if (showMembers) {
+      handleGetTierMembers(tier.id);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-slate-600 font-medium">
-            Loading dashboard...
-          </p>
+          <Loader2 className="w-10 h-10 text-gray-12 mx-auto mb-3" />
+          <p className="mt-4 text-gray-11 font-medium">Loading dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 overflow-hidden">
+    <div className="min-h-screen overflow-hidden pb-10">
       {/* Header */}
       {trialActive && (
         <div className="bg-blue-a2 border-b border-blue-a6 px-6 py-3">
@@ -109,18 +168,138 @@ export default function AdminDashboard({
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile Sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-gray-1 border-r border-gray-a6 transform transition-transform duration-300 ease-in-out lg:hidden ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } flex flex-col`}
+      >
+        {/* Sidebar Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          {/* League Name Section */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-gray-11 uppercase tracking-wider mb-2">
+                League
+              </h3>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="p-1 hover:bg-gray-a3 rounded"
+              >
+                <X className="w-5 h-5 text-gray-12 mb-2" />
+              </button>
+            </div>
+            {selectedLeague ? (
+              <div className="rounded-lg px-3 py-2 border border-gray-a6 shadow-sm shadow-white bg-gray-a2 flex items-center justify-between">
+                <span className="text-2 font-medium text-gray-12 truncate">
+                  {selectedLeague.name}
+                </span>
+                <button
+                  onClick={() => {
+                    setShowEditLeague(true);
+                    setSidebarOpen(false);
+                  }}
+                  className="cursor-pointer flex-shrink-0 ml-2"
+                >
+                  <Pencil className="w-4 h-4 text-gray-12" />
+                </button>
+              </div>
+            ) : (
+              <Button
+                size="2"
+                onClick={() => {
+                  setShowCreateLeague(true);
+                  setSidebarOpen(false);
+                }}
+                className="bg-blue-a3 hover:bg-blue-a4 text-white w-full cursor-pointer"
+              >
+                Create League
+              </Button>
+            )}
+          </div>
+
+          {/* Tiers Section */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-semibold text-gray-11 uppercase tracking-wider">
+                Tiers
+              </h3>
+              {selectedLeague && (
+                <Button
+                  onClick={() => {
+                    setShowCreateTier(true);
+                    setSidebarOpen(false);
+                  }}
+                  size="1"
+                  className="cursor-pointer bg-green-a3 hover:bg-green-a4 text-white p-1"
+                >
+                  <Plus className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+            <div className="space-y-1">
+              {tiers.length > 0 ? (
+                tiers.map((tier) => (
+                  <button
+                    key={tier.id}
+                    onClick={() => handleTierSelect(tier)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-2 font-medium transition-colors ${
+                      selectedTier?.id === tier.id
+                        ? "bg-blue-a3 text-white"
+                        : "bg-gray-a3 text-gray-11 hover:bg-gray-a4"
+                    }`}
+                  >
+                    {tier.name}
+                  </button>
+                ))
+              ) : (
+                <p className="text-xs text-gray-11 px-3 py-2">No tiers yet</p>
+              )}
+            </div>
+          </div>
+
+          {/* Leagues Info Section */}
+          <div>
+            <h3 className="text-xs font-semibold text-gray-11 uppercase tracking-wider mb-4">
+              Information
+            </h3>
+            <LeaguesInfo communityId={params.communityId} />
+          </div>
+        </div>
+      </aside>
+
+      {/* Header */}
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-6">
         <div className="">
-          <div className="flex flex-row items-center justify-between">
-            <div className="">
-              <h1 className="text-9 font-bold text-gray-12">Admin Dashboard</h1>
-              <p className="mt-1 text-sm text-gray-11">
-                Manage leagues, tiers, and community members
-              </p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex gap-3">
+              <Button
+                size="2"
+                className="lg:hidden bg-gray-a2 hover:bg-gray-a3 text-gray-12 cursor-pointer p-2 flex-shrink-0"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
+              <div>
+                <h1 className="text-6 sm:text-7 md:text-9 font-bold text-gray-12">
+                  Admin Dashboard
+                </h1>
+                <p className="mt-1 text-xs sm:text-sm text-gray-11">
+                  Manage leagues, tiers, and community members
+                </p>
+              </div>
             </div>
             <Button
-              size="3"
-              className="bg-blue-a4 hover:bg-blue-a5 text-white cursor-pointer"
+              size="2"
+              className="bg-blue-a4 hover:bg-blue-a5 text-white cursor-pointer w-full sm:w-auto"
               onClick={() => router.push("/pricing")}
             >
               Get Premium
@@ -130,7 +309,7 @@ export default function AdminDashboard({
             <Button
               size="2"
               onClick={() => setShowCreateLeague(true)}
-              className="bg-blue-a3 hover:bg-blue-a4 text-white"
+              className="bg-blue-a3 hover:bg-blue-a4 text-white w-full sm:w-auto mt-4"
             >
               Create League
             </Button>
@@ -139,184 +318,267 @@ export default function AdminDashboard({
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="">
-            {showCreateLeague ? (
-              <div>
-                <EditLeagueForm
-                  communityId={params.communityId}
-                  experienceId={params.experienceId}
-                  onSuccess={handleLeagueCreated}
-                  onCancel={() => setShowCreateLeague(false)}
-                />
-              </div>
-            ) : selectedLeague ? (
-              <div>
-                <LeagueInfo
-                  experienceId={params.experienceId}
-                  league={selectedLeague}
-                  communityId={params.communityId}
-                  onLeagueUpdate={handleLeagueCreated}
-                />
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 mb-3">
-                  <svg
-                    className="w-6 h-6 text-blue-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                    />
-                  </svg>
-                </div>
-                <p className="text-sm text-slate-600">No league created yet</p>
-                <p className="text-xs text-slate-500 mt-1">
-                  Create one to get started
-                </p>
-              </div>
-            )}
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-8">
+        {/* League Name & Tier Tabs - Desktop Layout (hidden on mobile) */}
+        <div className="hidden lg:flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-1 border-gray-a6 mb-3 md:mb-5 pb-0 border-b">
+          {/* League Name */}
+          <div className="rounded-none px-2 sm:px-3.5 py-1.5 text-xs sm:text-2 font-medium whitespace-nowrap transition-colors border shadow-sm shadow-white border-gray-a6 flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            <button
+              onClick={() => setShowEditLeague(!showEditLeague)}
+              className="cursor-pointer flex-shrink-0 flex flex-row items-center gap-3"
+            >
+              <span className="max-w-[200px] sm:max-w-none truncate">
+                {selectedLeague?.name}
+              </span>
+              <Pencil className="w-3 h-3 sm:w-4 sm:h-4 text-gray-12" />
+            </button>
           </div>
 
-          {/* Main Content Area */}
-          <div className="lg:col-span-3 space-y-6">
-            {/* Tiers Section */}
-            <div className="rounded-lg border border-gray-a6 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-a6 bg-gray-a2 flex items-center justify-between">
-                <h2 className="font-semibold text-gray-12">
-                  {selectedLeague ? `${selectedLeague.name} Tiers` : "Tiers"}
-                </h2>
-                {selectedLeague && !showCreateTier && (
+          {/* Tier Tabs */}
+          <div className="flex flex-row items-center gap-1 overflow-x-auto scrollbar-hide w-full sm:w-auto mt-1.5">
+            {tiers.length > 0 &&
+              tiers.map((tier) => (
+                <Button
+                  onClick={() => handleTierSelect(tier)}
+                  className={`rounded-tl-lg rounded-tr-lg rounded-none sm:-mb-0.5 px-2 sm:px-3.5 py-1 sm:py-1.5 text-xs sm:text-2 cursor-pointer whitespace-nowrap flex-shrink-0 ${
+                    selectedTier?.id === tier.id
+                      ? "bg-blue-a3 hover:bg-blue-a4 text-white"
+                      : "bg-gray-a3 hover:bg-gray-a4 text-gray-11"
+                  }`}
+                  key={tier.id}
+                >
+                  {tier.name}
+                </Button>
+              ))}
+            {selectedLeague && (
+              <Button
+                onClick={() => setShowCreateTier(true)}
+                title="Create Tier"
+                className="rounded-tl-lg rounded-tr-lg rounded-none sm:-mb-0.5 px-1.5 sm:px-2 py-1 sm:py-1.5 cursor-pointer bg-green-a3 hover:bg-green-a4 text-white flex-shrink-0"
+              >
+                <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+              </Button>
+            )}
+          </div>
+          <div className="hidden sm:block sm:ml-auto">
+            <LeaguesInfo communityId={params.communityId} />
+          </div>
+        </div>
+
+        {/* Edit League Modal */}
+        {showEditLeague && selectedLeague && (
+          <EditLeagueForm
+            isOpen={showEditLeague}
+            leagueId={selectedLeague.id}
+            communityId={params.communityId}
+            experienceId={params.experienceId}
+            initialName={selectedLeague.name}
+            initialDescription={selectedLeague.description}
+            onSuccess={() => {
+              setShowEditLeague(false);
+              handleLeagueCreated();
+            }}
+            onCancel={() => setShowEditLeague(false)}
+          />
+        )}
+
+        {/* Create League Modal */}
+        {showCreateLeague && (
+          <EditLeagueForm
+            isOpen={showCreateLeague}
+            communityId={params.communityId}
+            experienceId={params.experienceId}
+            onSuccess={() => {
+              setShowCreateLeague(false);
+              handleLeagueCreated();
+            }}
+            onCancel={() => setShowCreateLeague(false)}
+          />
+        )}
+
+        {/* Create Tier Modal */}
+        {showCreateTier && selectedLeague && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            onClick={() => setShowCreateTier(false)}
+          >
+            <div
+              className="bg-gray-1 border border-gray-a6 rounded-lg shadow-xl w-full max-w-md mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <CreateTierForm
+                leagueId={selectedLeague.id}
+                onSuccess={handleTierCreated}
+                onCancel={() => setShowCreateTier(false)}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="gap-4 md:gap-6 max-w-7xl mx-auto">
+          {/* Only show tier content if a tier is selected */}
+          {selectedTier ? (
+            <>
+              {/* Tier Content Tabs */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 py-3 md:py-5">
+                <div className="flex flex-row items-center gap-1 border border-gray-a6 bg-gray-a2 rounded-lg p-1 w-full sm:w-auto mb-3 md:mb-5">
                   <Button
                     size="2"
-                    onClick={() => setShowCreateTier(true)}
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    className={`text-xs sm:text-sm font-medium cursor-pointer flex-1 sm:flex-none ${
+                      showChat
+                        ? "bg-blue-a3 text-white"
+                        : "bg-transparent text-gray-11"
+                    }`}
+                    onClick={() => {
+                      setShowChat(true);
+                      setShowSettings(false);
+                      setShowMembers(false);
+                    }}
                   >
-                    Add Tier
+                    Chat
                   </Button>
-                )}
-              </div>
-
-              {selectedLeague ? (
-                showCreateTier ? (
-                  <CreateTierForm
-                    leagueId={selectedLeague.id}
-                    onSuccess={handleTierCreated}
-                    onCancel={() => setShowCreateTier(false)}
-                  />
-                ) : (
-                  <TiersList
-                    tiers={tiers}
-                    selectedLeague={selectedLeague}
-                    onTierDeleted={handleTierDeleted}
-                    adminMemberId={adminMemberId}
-                  />
-                )
-              ) : (
-                <div className="text-center py-12">
-                  <svg
-                    className="w-12 h-12 text-slate-300 mx-auto mb-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                  <Button
+                    size="2"
+                    className={`text-xs sm:text-sm font-medium cursor-pointer flex-1 sm:flex-none ${
+                      showSettings
+                        ? "bg-blue-a3 text-white"
+                        : "bg-transparent text-gray-11"
+                    }`}
+                    onClick={() => {
+                      setShowSettings(true);
+                      setShowChat(false);
+                      setShowMembers(false);
+                    }}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                  <p className="text-gray-11 font-medium">No league selected</p>
-                  <p className="text-sm text-gray-11 mt-1">
-                    Create or select a league to manage tiers
-                  </p>
+                    Settings
+                  </Button>
+                  <Button
+                    size="2"
+                    className={`text-xs sm:text-sm font-medium cursor-pointer flex-1 sm:flex-none ${
+                      showMembers
+                        ? "bg-blue-a3 text-white"
+                        : "bg-transparent text-gray-11"
+                    }`}
+                    onClick={() => {
+                      setShowMembers(true);
+                      setShowSettings(false);
+                      setShowChat(false);
+                      if (selectedTier) {
+                        handleGetTierMembers(selectedTier.id);
+                      }
+                    }}
+                  >
+                    Members
+                  </Button>
                 </div>
-              )}
-            </div>
-
-            {/* Details Section */}
-            {selectedLeague && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className=" rounded-lg border border-gray-a6 bg-gray-a3 shadow-sm p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-gray-11">
-                      League Name
-                    </p>
-                    <svg
-                      className="w-4 h-4 text-blue-600"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v4h8v-4zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                    </svg>
-                  </div>
-                  <p className="text-xl font-bold text-gray-12">
-                    {selectedLeague.name}
-                  </p>
-                </div>
-
-                <div className="rounded-lg border border-gray-a6 bg-gray-a3 shadow-sm p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-gray-11">
-                      Total Tiers
-                    </p>
-                    <svg
-                      className="w-4 h-4 text-green-600"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-xl font-bold text-gray-12">
-                    {tiers.length}
-                  </p>
-                </div>
-
-                <div className="rounded-lg border border-gray-a6 bg-gray-a3 shadow-sm p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-gray-11">Status</p>
-                    <svg
-                      className="w-3 h-3 text-purple-600"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-xl font-bold text-gray-12">Active</p>
-                </div>
-              </div>
-            )}
-
-            {/* Description Section */}
-            {selectedLeague && selectedLeague.description && (
-              <div className="rounded-lg border border-gray-a6 shadow-sm p-6">
-                <h3 className="font-semibold text-slate-900 mb-3">
-                  Description
-                </h3>
-                <p className="text-slate-700 leading-relaxed">
-                  {selectedLeague.description}
+                <p className="text-xs sm:text-sm font-medium text-gray-11 w-full sm:w-auto text-left sm:text-right">
+                  Unlocks at:{" "}
+                  <span className="font-semibold">{selectedTier.minScore}</span>{" "}
+                  points
                 </p>
               </div>
-            )}
-          </div>
+              {/* Tier Content Display */}
+              <div className="rounded-lg border border-gray-a6 shadow-sm overflow-hidden">
+                {showChat && (
+                  <AdminTierChat
+                    tierId={selectedTier.id}
+                    tiers={tiers}
+                    onMessageSent={handleTierDeleted}
+                    adminMemberId={adminMemberId}
+                  />
+                )}
+
+                {showSettings && (
+                  <div className="p-4 md:p-6">
+                    <TierSettings
+                      tier={selectedTier}
+                      onTierDeleted={handleTierDeleted}
+                    />
+                  </div>
+                )}
+
+                {showMembers && (
+                  <div className="p-4 md:p-6">
+                    {loadingMembers[selectedTier.id] ? (
+                      <div className="text-center py-8">
+                        <div className="inline-block animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600"></div>
+                        <p className="mt-2 text-xs sm:text-2 text-gray-11">
+                          Loading members...
+                        </p>
+                      </div>
+                    ) : tierMembers[selectedTier.id] &&
+                      tierMembers[selectedTier.id].length > 0 ? (
+                      <div className="space-y-2 max-h-96 overflow-y-auto">
+                        {tierMembers[selectedTier.id].map((member) => (
+                          <div
+                            key={member.id}
+                            className="flex items-center justify-between border border-gray-a6 bg-gray-a2 p-2 sm:p-3 rounded-lg hover:bg-gray-a3 transition-colors"
+                          >
+                            <span className="text-2 sm:text-3 font-medium text-gray-12 truncate">
+                              {member.name}
+                            </span>
+                            <span className="text-2 sm:text-3 font-semibold text-blue-11 ml-2 whitespace-nowrap">
+                              {member.score} pts
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-2 sm:text-3 text-gray-11">
+                          No members in this tier yet
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : selectedLeague ? (
+            <div className="text-center py-8 sm:py-12 border border-gray-a6 rounded-lg bg-gray-a2 mx-2 sm:mx-0">
+              <svg
+                className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                />
+              </svg>
+              <p className="text-gray-11 font-medium text-sm sm:text-base px-4">
+                No tiers created yet
+              </p>
+              <p className="text-xs sm:text-sm text-gray-11 mt-1 px-4">
+                Click the + button above to create your first tier
+              </p>
+            </div>
+          ) : (
+            <div className="text-center py-8 sm:py-12 border border-gray-a6 rounded-lg bg-gray-a2 mx-2 sm:mx-0">
+              <svg
+                className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <p className="text-gray-11 font-medium text-sm sm:text-base px-4">
+                No league created yet
+              </p>
+              <p className="text-xs sm:text-sm text-gray-11 mt-1 px-4">
+                Create a league first to get started
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
