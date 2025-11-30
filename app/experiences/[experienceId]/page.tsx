@@ -124,9 +124,9 @@ export default async function ExperiencePage({
     const trialStatus = await checkTrialStatus(community.id, userId);
 
     // If trial expired, show paywall
-    if (!trialStatus.trialActive && trialStatus.status === "expired") {
-      return <TrialExpired isAdmin={true} communityName={community.name} />;
-    }
+    //  if (!trialStatus.trialActive && trialStatus.status === "expired") {
+    //    return <TrialExpired isAdmin={true} communityName={community.name} />;
+    //  }
 
     return (
       <AdminDashboard
@@ -143,9 +143,9 @@ export default async function ExperiencePage({
   const trialStatus = await checkTrialStatus(community.id, userId);
 
   // If trial expired, show locked screen for members
-  if (!trialStatus.trialActive && trialStatus.status === "expired") {
-    return <TrialExpired isAdmin={false} communityName={community.name} />;
-  }
+  //   if (!trialStatus.trialActive && trialStatus.status === "expired") {
+  //     return <TrialExpired isAdmin={false} communityName={community.name} />;
+  //   }
 
   await recordDailyCheckIn(member.id);
 

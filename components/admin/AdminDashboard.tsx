@@ -155,6 +155,10 @@ export default function AdminDashboard({
         <div className="bg-blue-a2 border-b border-blue-a6 px-6 py-3">
           <div className="flex items-center justify-between max-w-7xl mx-auto">
             <p className="text-2 text-blue-11">
+              <span className="font-semibold">Chat Tiers is now Free!</span>
+            </p>
+
+            {/* <p className="text-2 text-blue-11">
               <span className="font-semibold">Free Trial Active</span> -{" "}
               {trialDaysRemaining} days remaining
             </p>
@@ -163,7 +167,7 @@ export default function AdminDashboard({
                 className="h-full bg-blue-9 transition-all"
                 style={{ width: `${(trialDaysRemaining / 5) * 100}%` }}
               />
-            </div>
+            </div> */}
           </div>
         </div>
       )}
