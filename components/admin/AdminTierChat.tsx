@@ -2,8 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Tier } from "@prisma/client";
-import { sendTierMessage, getTierMessages } from "@/actions/admin-actions";
-import { ArrowUp } from "lucide-react";
+import {
+  sendTierMessage,
+  getTierMessages,
+  deleteMessage,
+} from "@/actions/admin-actions";
+import { ArrowUp, Trash2 } from "lucide-react";
 
 interface Message {
   id: string;
@@ -128,6 +132,29 @@ export default function AdminTierChat({
     }
   };
 
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!confirm("Are you sure you want to delete this message?")) {
+      return;
+    }
+
+    try {
+      const result = await deleteMessage(messageId);
+      if (result.success) {
+        // Remove message from state
+        const updatedMessages = messages.filter((msg) => msg.id !== messageId);
+        setMessages(updatedMessages);
+        // Update cache
+        messagesCache[selectedTierId] = updatedMessages;
+        onMessageSent(); // Trigger any needed refreshes
+      } else {
+        alert(result.error);
+      }
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      alert("Failed to delete message");
+    }
+  };
+
   return (
     <div className="flex flex-col h-[600px] bg-gray-a2 border border-gray-a6 overflow-hidden">
       <div className="px-4 py-2 bg-gray-a2 border-b border-gray-a6 text-2 text-gray-11">
@@ -143,13 +170,22 @@ export default function AdminTierChat({
           messages.map((msg) => (
             <div
               key={msg.id}
-              className="bg-gray-a2 rounded-lg p-3 border border-gray-a6"
+              className="bg-gray-a2 rounded-lg p-3 border border-gray-a6 group hover:border-gray-a7 transition-colors"
             >
               <div className="flex items-center justify-between gap-2 mb-1">
                 <p className="text-2 font-semibold">{msg.author.name}</p>
-                <p className="text-1 text-gray-11">
-                  {new Date(msg.createdAt).toLocaleString()}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-1 text-gray-11">
+                    {new Date(msg.createdAt).toLocaleString()}
+                  </p>
+                  <button
+                    onClick={() => handleDeleteMessage(msg.id)}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-a3 rounded transition-all text-red-11 hover:text-red-12 cursor-pointer"
+                    title="Delete message"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
               <p className="text-3 text-gray-12 mt-2 whitespace-pre-wrap break-words">
                 {msg.content}

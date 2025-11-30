@@ -255,3 +255,17 @@ export async function getTierMessages(tierId: string) {
 		return { success: false, error: "Failed to fetch messages", messages: [] };
 	}
 }
+
+export async function deleteMessage(messageId: string) {
+	try {
+		await prisma.message.delete({
+			where: { id: messageId },
+		});
+
+		revalidatePath(`/admin`);
+		return { success: true };
+	} catch (error) {
+		console.error("Error deleting message:", error);
+		return { success: false, error: "Failed to delete message" };
+	}
+}
