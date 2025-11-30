@@ -301,13 +301,13 @@ export default function AdminDashboard({
                 </p>
               </div>
             </div>
-            <Button
+            {/* <Button
               size="2"
               className="bg-blue-a4 hover:bg-blue-a5 text-white cursor-pointer w-full sm:w-auto"
               onClick={() => router.push("/pricing")}
             >
               Get Premium
-            </Button>
+            </Button> */}
           </div>
           {!selectedLeague && !showCreateLeague && (
             <Button
