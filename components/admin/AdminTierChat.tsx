@@ -151,7 +151,9 @@ export default function AdminTierChat({
                   {new Date(msg.createdAt).toLocaleString()}
                 </p>
               </div>
-              <p className="text-3 text-gray-12 mt-2">{msg.content}</p>
+              <p className="text-3 text-gray-12 mt-2 whitespace-pre-wrap break-words">
+                {msg.content}
+              </p>
             </div>
           ))
         ) : (

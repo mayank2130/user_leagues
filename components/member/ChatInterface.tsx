@@ -89,7 +89,7 @@ export default function ChatInterface({
                       {new Date(message.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="text-3 text-gray-12 break-words">
+                  <p className="text-3 text-gray-12 whitespace-pre-wrap break-words">
                     {message.content}
                   </p>
                 </div>
