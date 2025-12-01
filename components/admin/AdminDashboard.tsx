@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@whop/react/components";
 import CreateTierForm from "@/components/admin/CreateTierForm";
 import { getLeague, getTierMembers, getTiers } from "@/actions/admin-actions";
+import { getUnreadCounts } from "@/actions/support-actions";
 import { League, Tier } from "@prisma/client";
 import EditLeagueForm from "@/components/admin/EditLeagueForm";
 import { useRouter } from "next/navigation";
@@ -11,6 +12,7 @@ import { Pencil, Plus, Menu, X, Loader2 } from "lucide-react";
 import AdminTierChat from "./AdminTierChat";
 import TierSettings from "./TierSettings";
 import LeaguesInfo from "./LeaguesInfo";
+import TierSupport from "./TierSupport";
 
 interface MemberInfo {
   id: string;
@@ -49,6 +51,16 @@ export default function AdminDashboard({
     {}
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadCounts, setUnreadCounts] = useState<
+    Record<string, { tickets: number; feedback: number }>
+  >({});
+
+  const fetchUnreadCounts = useCallback(async () => {
+    const result = await getUnreadCounts(params.communityId);
+    if (result.success) {
+      setUnreadCounts(result.counts);
+    }
+  }, [params.communityId]);
 
   useEffect(() => {
     const initParams = async () => {
@@ -64,10 +76,12 @@ export default function AdminDashboard({
           }
         }
       }
+      // Fetch unread counts
+      await fetchUnreadCounts();
       setLoading(false);
     };
     initParams();
-  }, [params]);
+  }, [params, fetchUnreadCounts]);
 
   const handleGetTierMembers = async (tierId: string) => {
     if (!tierMembers[tierId]) {
@@ -251,19 +265,34 @@ export default function AdminDashboard({
             </div>
             <div className="space-y-1">
               {tiers.length > 0 ? (
-                tiers.map((tier) => (
-                  <button
-                    key={tier.id}
-                    onClick={() => handleTierSelect(tier)}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-2 font-medium transition-colors ${
-                      selectedTier?.id === tier.id
-                        ? "bg-blue-a3 text-white"
-                        : "bg-gray-a3 text-gray-11 hover:bg-gray-a4"
-                    }`}
-                  >
-                    {tier.name}
-                  </button>
-                ))
+                tiers.map((tier) => {
+                  const unreadCount = unreadCounts[tier.id];
+                  const hasUnread =
+                    unreadCount &&
+                    (unreadCount.tickets > 0 || unreadCount.feedback > 0);
+                  const totalUnread = hasUnread
+                    ? unreadCount.tickets + unreadCount.feedback
+                    : 0;
+
+                  return (
+                    <button
+                      key={tier.id}
+                      onClick={() => handleTierSelect(tier)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-2 font-medium transition-colors relative ${
+                        selectedTier?.id === tier.id
+                          ? "bg-blue-a3 text-white"
+                          : "bg-gray-a3 text-gray-11 hover:bg-gray-a4"
+                      }`}
+                    >
+                      {tier.name}
+                      {hasUnread && (
+                        <span className="absolute top-1 right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-red-9 text-white text-[10px] font-bold rounded-full px-1">
+                          {totalUnread}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })
               ) : (
                 <p className="text-xs text-gray-11 px-3 py-2">No tiers yet</p>
               )}
@@ -341,19 +370,34 @@ export default function AdminDashboard({
           {/* Tier Tabs */}
           <div className="flex flex-row items-center gap-1 overflow-x-auto scrollbar-hide w-full sm:w-auto mt-1.5">
             {tiers.length > 0 &&
-              tiers.map((tier) => (
-                <Button
-                  onClick={() => handleTierSelect(tier)}
-                  className={`rounded-tl-lg rounded-tr-lg rounded-none sm:-mb-0.5 px-2 sm:px-3.5 py-1 sm:py-1.5 text-xs sm:text-2 cursor-pointer whitespace-nowrap flex-shrink-0 ${
-                    selectedTier?.id === tier.id
-                      ? "bg-blue-a3 hover:bg-blue-a4 text-white"
-                      : "bg-gray-a3 hover:bg-gray-a4 text-gray-11"
-                  }`}
-                  key={tier.id}
-                >
-                  {tier.name}
-                </Button>
-              ))}
+              tiers.map((tier) => {
+                const unreadCount = unreadCounts[tier.id];
+                const hasUnread =
+                  unreadCount &&
+                  (unreadCount.tickets > 0 || unreadCount.feedback > 0);
+                const totalUnread = hasUnread
+                  ? unreadCount.tickets + unreadCount.feedback
+                  : 0;
+
+                return (
+                  <Button
+                    onClick={() => handleTierSelect(tier)}
+                    className={`rounded-tl-lg rounded-tr-lg rounded-none sm:-mb-0.5 px-2 sm:px-3.5 py-1 sm:py-1.5 text-xs sm:text-2 cursor-pointer whitespace-nowrap flex-shrink-0 relative ${
+                      selectedTier?.id === tier.id
+                        ? "bg-blue-a3 hover:bg-blue-a4 text-white"
+                        : "bg-gray-a3 hover:bg-gray-a4 text-gray-11"
+                    }`}
+                    key={tier.id}
+                  >
+                    {tier.name}
+                    {hasUnread && (
+                      <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] flex items-center justify-center bg-red-9 text-white text-[9px] font-bold rounded-full px-1 border border-gray-1">
+                        {totalUnread}
+                      </span>
+                    )}
+                  </Button>
+                );
+              })}
             {selectedLeague && (
               <Button
                 onClick={() => setShowCreateTier(true)}
@@ -454,7 +498,7 @@ export default function AdminDashboard({
                       setShowMembers(false);
                     }}
                   >
-                    Settings
+                    Manage
                   </Button>
                   <Button
                     size="2"
@@ -493,11 +537,18 @@ export default function AdminDashboard({
                 )}
 
                 {showSettings && (
-                  <div className="p-4 md:p-6">
+                  <div className="p-4 md:p-6 space-y-6">
                     <TierSettings
                       tier={selectedTier}
                       onTierDeleted={handleTierDeleted}
                     />
+                    <div className="border-t border-gray-a6 pt-6">
+                      <TierSupport
+                        tierId={selectedTier.id}
+                        communityId={params.communityId}
+                        onViewed={fetchUnreadCounts}
+                      />
+                    </div>
                   </div>
                 )}
 

@@ -12,6 +12,38 @@ enum Role {
   ADMIN
 }
 
+enum TicketCategory {
+  TECHNICAL_ISSUE
+  ACCOUNT_PROBLEM
+  FEATURE_REQUEST
+  CONTENT_ISSUE
+  PAYMENT_BILLING
+  OTHER
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum FeedbackCategory {
+  FEATURE_SUGGESTION
+  USER_EXPERIENCE
+  CONTENT_QUALITY
+  PERFORMANCE
+  BUG_REPORT
+  GENERAL
+}
+
 model Community {
   id        String   @id @default(cuid())
   whopId    String   @unique
@@ -79,6 +111,8 @@ model Member {
   messages         Message[]
   scoreHistory     ScoreHistory[]
   messageReads     MessageRead[]
+  tickets          Ticket[]
+  feedbacks        Feedback[]
   
   @@unique([communityId, whopId])
   @@index([whopId])
@@ -172,4 +206,55 @@ model PointsConfig {
   community         Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
   
   @@index([communityId])
+}
+
+model Ticket {
+  id          String         @id @default(cuid())
+  memberId    String
+  communityId String
+  tierId      String?
+  
+  category    TicketCategory
+  priority    TicketPriority @default(MEDIUM)
+  status      TicketStatus   @default(OPEN)
+  
+  subject     String
+  description String         @db.Text
+  
+  viewedByAdmin Boolean       @default(false)
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  resolvedAt  DateTime?
+  
+  member      Member         @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  
+  @@index([memberId])
+  @@index([communityId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([viewedByAdmin])
+}
+
+model Feedback {
+  id          String           @id @default(cuid())
+  memberId    String
+  communityId String
+  tierId      String?
+  
+  category    FeedbackCategory
+  rating      Int              @default(5) // 1-5 rating
+  content     String           @db.Text
+  
+  viewedByAdmin Boolean        @default(false)
+  
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  member      Member           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  
+  @@index([memberId])
+  @@index([communityId])
+  @@index([createdAt])
+  @@index([viewedByAdmin])
 }
