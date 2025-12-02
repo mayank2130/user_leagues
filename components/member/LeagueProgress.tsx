@@ -4,6 +4,7 @@ import { MemberWithTier, SimpleTier, LeagueWithTiers } from "@/types";
 import { Button, Dialog, Select } from "@whop/react/components";
 import { useState } from "react";
 import { createTicket, createFeedback } from "@/actions/support-actions";
+import AlertDialog from "@/components/ui/AlertDialog";
 
 // Define types locally until Prisma generates them
 type TicketCategory =
@@ -68,6 +69,17 @@ export default function LeagueProgress({
   const [activeTab, setActiveTab] = useState<"ticket" | "feedback">("ticket");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: "success" | "danger" | "warning" | "info";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "info",
+  });
 
   // Ticket form state
   const [ticketData, setTicketData] = useState({
@@ -86,7 +98,12 @@ export default function LeagueProgress({
 
   const handleTicketSubmit = async () => {
     if (!ticketData.subject.trim() || !ticketData.description.trim()) {
-      alert("Please fill in all required fields");
+      setAlertDialog({
+        isOpen: true,
+        title: "Validation Error",
+        message: "Please fill in all required fields",
+        variant: "warning",
+      });
       return;
     }
 
@@ -103,7 +120,6 @@ export default function LeagueProgress({
       });
 
       if (result.success) {
-        alert("Ticket submitted successfully!");
         setTicketData({
           category: "TECHNICAL_ISSUE",
           priority: "MEDIUM",
@@ -111,8 +127,19 @@ export default function LeagueProgress({
           description: "",
         });
         setDialogOpen(false);
+        setAlertDialog({
+          isOpen: true,
+          title: "Success",
+          message: "Ticket submitted successfully!",
+          variant: "success",
+        });
       } else {
-        alert(result.error || "Failed to submit ticket");
+        setAlertDialog({
+          isOpen: true,
+          title: "Error",
+          message: result.error || "Failed to submit ticket",
+          variant: "danger",
+        });
       }
     } finally {
       setIsSubmitting(false);
@@ -121,7 +148,12 @@ export default function LeagueProgress({
 
   const handleFeedbackSubmit = async () => {
     if (!feedbackData.content.trim()) {
-      alert("Please provide your feedback");
+      setAlertDialog({
+        isOpen: true,
+        title: "Validation Error",
+        message: "Please provide your feedback",
+        variant: "warning",
+      });
       return;
     }
 
@@ -137,15 +169,25 @@ export default function LeagueProgress({
       });
 
       if (result.success) {
-        alert("Feedback submitted successfully!");
         setFeedbackData({
           category: "GENERAL",
           rating: 5,
           content: "",
         });
         setDialogOpen(false);
+        setAlertDialog({
+          isOpen: true,
+          title: "Success",
+          message: "Feedback submitted successfully!",
+          variant: "success",
+        });
       } else {
-        alert(result.error || "Failed to submit feedback");
+        setAlertDialog({
+          isOpen: true,
+          title: "Error",
+          message: result.error || "Failed to submit feedback",
+          variant: "danger",
+        });
       }
     } finally {
       setIsSubmitting(false);
@@ -470,6 +512,15 @@ export default function LeagueProgress({
           )}
         </Dialog.Content>
       </Dialog.Root>
+
+      {/* Alert Dialog for Success/Error Messages */}
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        variant={alertDialog.variant}
+      />
     </div>
   );
 }

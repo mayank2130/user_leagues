@@ -11,6 +11,8 @@ import {
   markTierAsViewed,
 } from "@/actions/support-actions";
 import { Trash2, Clock, CheckCircle, XCircle, Star } from "lucide-react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import AlertDialog from "@/components/ui/AlertDialog";
 
 // Module-level cache to persist across component mounts
 const dataCache: {
@@ -68,6 +70,22 @@ export default function TierSupport({
   const [loading, setLoading] = useState(true);
   const [updatingTicket, setUpdatingTicket] = useState<string | null>(null);
   const hasMarkedViewed = useRef<Record<string, boolean>>({});
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean;
+    type: "ticket" | "feedback";
+    id: string;
+  }>({ isOpen: false, type: "ticket", id: "" });
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: "success" | "danger" | "warning" | "info";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "info",
+  });
 
   // Filter data for current tier using useMemo
   const tickets = useMemo(() => {
@@ -157,44 +175,84 @@ export default function TierSupport({
         setAllTickets(updated);
         dataCache.tickets = updated;
       } else {
-        alert(result.error);
+        setAlertDialog({
+          isOpen: true,
+          title: "Error",
+          message: result.error || "Failed to update ticket status",
+          variant: "danger",
+        });
       }
     } finally {
       setUpdatingTicket(null);
     }
   };
 
-  const handleDeleteTicket = async (ticketId: string) => {
-    if (!confirm("Are you sure you want to delete this ticket?")) return;
-
-    try {
-      const result = await deleteTicket(ticketId);
-      if (result.success) {
-        const updated = allTickets.filter((t) => t.id !== ticketId);
-        setAllTickets(updated);
-        dataCache.tickets = updated;
-      } else {
-        alert(result.error);
-      }
-    } catch (error) {
-      console.error("Error deleting ticket:", error);
-    }
+  const handleDeleteTicket = (ticketId: string) => {
+    setDeleteConfirm({ isOpen: true, type: "ticket", id: ticketId });
   };
 
-  const handleDeleteFeedback = async (feedbackId: string) => {
-    if (!confirm("Are you sure you want to delete this feedback?")) return;
+  const handleDeleteFeedback = (feedbackId: string) => {
+    setDeleteConfirm({ isOpen: true, type: "feedback", id: feedbackId });
+  };
+
+  const confirmDelete = async () => {
+    const { type, id } = deleteConfirm;
 
     try {
-      const result = await deleteFeedback(feedbackId);
-      if (result.success) {
-        const updated = allFeedback.filter((f) => f.id !== feedbackId);
-        setAllFeedback(updated);
-        dataCache.feedback = updated;
+      if (type === "ticket") {
+        const result = await deleteTicket(id);
+        if (result.success) {
+          const updated = allTickets.filter((t) => t.id !== id);
+          setAllTickets(updated);
+          dataCache.tickets = updated;
+          setDeleteConfirm({ isOpen: false, type: "ticket", id: "" });
+          setAlertDialog({
+            isOpen: true,
+            title: "Success",
+            message: "Ticket deleted successfully",
+            variant: "success",
+          });
+        } else {
+          setDeleteConfirm({ isOpen: false, type: "ticket", id: "" });
+          setAlertDialog({
+            isOpen: true,
+            title: "Error",
+            message: result.error || "Failed to delete ticket",
+            variant: "danger",
+          });
+        }
       } else {
-        alert(result.error);
+        const result = await deleteFeedback(id);
+        if (result.success) {
+          const updated = allFeedback.filter((f) => f.id !== id);
+          setAllFeedback(updated);
+          dataCache.feedback = updated;
+          setDeleteConfirm({ isOpen: false, type: "feedback", id: "" });
+          setAlertDialog({
+            isOpen: true,
+            title: "Success",
+            message: "Feedback deleted successfully",
+            variant: "success",
+          });
+        } else {
+          setDeleteConfirm({ isOpen: false, type: "feedback", id: "" });
+          setAlertDialog({
+            isOpen: true,
+            title: "Error",
+            message: result.error || "Failed to delete feedback",
+            variant: "danger",
+          });
+        }
       }
     } catch (error) {
-      console.error("Error deleting feedback:", error);
+      console.error("Error deleting:", error);
+      setDeleteConfirm({ isOpen: false, type: "ticket", id: "" });
+      setAlertDialog({
+        isOpen: true,
+        title: "Error",
+        message: "An unexpected error occurred",
+        variant: "danger",
+      });
     }
   };
 
@@ -432,6 +490,33 @@ export default function TierSupport({
           )}
         </div>
       )}
+
+      {/* Confirmation Dialog for Delete */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        onClose={() =>
+          setDeleteConfirm({ isOpen: false, type: "ticket", id: "" })
+        }
+        onConfirm={confirmDelete}
+        title={`Delete ${
+          deleteConfirm.type === "ticket" ? "Ticket" : "Feedback"
+        }`}
+        message={`Are you sure you want to delete this ${deleteConfirm.type}? This action cannot be undone.`}
+        confirmText={`Delete ${
+          deleteConfirm.type === "ticket" ? "Ticket" : "Feedback"
+        }`}
+        cancelText="Cancel"
+        variant="danger"
+      />
+
+      {/* Alert Dialog for Success/Error Messages */}
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        variant={alertDialog.variant}
+      />
     </div>
   );
 }

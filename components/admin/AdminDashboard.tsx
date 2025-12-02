@@ -3,16 +3,23 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@whop/react/components";
 import CreateTierForm from "@/components/admin/CreateTierForm";
-import { getLeague, getTierMembers, getTiers } from "@/actions/admin-actions";
+import {
+  getLeague,
+  getTierMembers,
+  getTiers,
+  deleteTier,
+} from "@/actions/admin-actions";
 import { getUnreadCounts } from "@/actions/support-actions";
 import { League, Tier } from "@prisma/client";
 import EditLeagueForm from "@/components/admin/EditLeagueForm";
 import { useRouter } from "next/navigation";
-import { Pencil, Plus, Menu, X, Loader2 } from "lucide-react";
+import { Pencil, Plus, Menu, X, Loader2, Trash2 } from "lucide-react";
 import AdminTierChat from "./AdminTierChat";
 import TierSettings from "./TierSettings";
 import LeaguesInfo from "./LeaguesInfo";
 import TierSupport from "./TierSupport";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import AlertDialog from "@/components/ui/AlertDialog";
 
 interface MemberInfo {
   id: string;
@@ -54,6 +61,19 @@ export default function AdminDashboard({
   const [unreadCounts, setUnreadCounts] = useState<
     Record<string, { tickets: number; feedback: number }>
   >({});
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: "success" | "danger" | "warning" | "info";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "info",
+  });
 
   const fetchUnreadCounts = useCallback(async () => {
     const result = await getUnreadCounts(params.communityId);
@@ -148,6 +168,51 @@ export default function AdminDashboard({
     setSidebarOpen(false);
     if (showMembers) {
       handleGetTierMembers(tier.id);
+    }
+  };
+
+  const handleDeleteTier = async () => {
+    if (!selectedTier) return;
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteTier = async () => {
+    if (!selectedTier) return;
+
+    setDeleteLoading(true);
+    try {
+      const result = await deleteTier(selectedTier.id);
+
+      if (result.success) {
+        // Refresh tiers list
+        await handleTierDeleted();
+        setDeleteConfirmOpen(false);
+        setAlertDialog({
+          isOpen: true,
+          title: "Success",
+          message: "Tier deleted successfully!",
+          variant: "success",
+        });
+      } else {
+        setDeleteConfirmOpen(false);
+        setAlertDialog({
+          isOpen: true,
+          title: "Error",
+          message: result.error || "Failed to delete tier",
+          variant: "danger",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting tier:", error);
+      setDeleteConfirmOpen(false);
+      setAlertDialog({
+        isOpen: true,
+        title: "Error",
+        message: "Failed to delete tier",
+        variant: "danger",
+      });
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -519,11 +584,25 @@ export default function AdminDashboard({
                     Members
                   </Button>
                 </div>
-                <p className="text-xs sm:text-sm font-medium text-gray-11 w-full sm:w-auto text-left sm:text-right">
-                  Unlocks at:{" "}
-                  <span className="font-semibold">{selectedTier.minScore}</span>{" "}
-                  points
-                </p>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <p className="text-xs sm:text-sm font-medium text-gray-11 text-left sm:text-right">
+                    Unlocks at:{" "}
+                    <span className="font-semibold">
+                      {selectedTier.minScore}
+                    </span>{" "}
+                    points
+                  </p>
+                  <Button
+                    size="1"
+                    variant="surface"
+                    onClick={handleDeleteTier}
+                    className="cursor-pointer bg-red-a3 hover:bg-red-a4 text-red-11 hover:text-red-12 border-red-a6"
+                    title="Delete tier"
+                  >
+                    Delete Tier
+                    <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                  </Button>
+                </div>
               </div>
               {/* Tier Content Display */}
               <div className="rounded-lg border border-gray-a6 shadow-sm overflow-hidden">
@@ -636,6 +715,30 @@ export default function AdminDashboard({
           )}
         </div>
       </div>
+
+      {/* Confirmation Dialog for Delete Tier */}
+      {selectedTier && (
+        <ConfirmDialog
+          isOpen={deleteConfirmOpen}
+          onClose={() => setDeleteConfirmOpen(false)}
+          onConfirm={confirmDeleteTier}
+          title="Delete Tier"
+          message={`Are you sure you want to delete the "${selectedTier.name}" tier?.`}
+          confirmText="Delete Tier"
+          cancelText="Cancel"
+          variant="danger"
+          isLoading={deleteLoading}
+        />
+      )}
+
+      {/* Alert Dialog for Success/Error Messages */}
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        variant={alertDialog.variant}
+      />
     </div>
   );
 }
